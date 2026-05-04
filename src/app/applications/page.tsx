@@ -29,12 +29,26 @@ type FormState = {
   rating: number | null;
 };
 
+type AuthIdentity = {
+  id: string;
+  email?: string | null;
+};
+
 const RESULT_STYLE: Record<string, { label: string; cls: string }> = {
   beklemede:           { label: "Beklemede",         cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
   mulakat_bekleniyor:  { label: "Mülakat Bekleniyor", cls: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" },
   olumlu:              { label: "Olumlu",             cls: "bg-green-500/15 text-green-400 border-green-500/30" },
+  staji_bitirdim:      { label: "Stajı Bitirdim",     cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
   ret:                 { label: "Ret",                cls: "bg-red-500/15 text-red-400 border-red-500/30" },
 };
+
+const RESULT_OPTIONS = [
+  { value: "beklemede", label: "Beklemede" },
+  { value: "mulakat_bekleniyor", label: "Mülakat Bekleniyor" },
+  { value: "olumlu", label: "Olumlu" },
+  { value: "staji_bitirdim", label: "Stajı Bitirdim" },
+  { value: "ret", label: "Ret" },
+];
 
 const EMPTY_FORM: FormState = {
   company_name: "", department: "", result: "beklemede",
@@ -50,11 +64,37 @@ const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-1.5";
 const NAV_LINK = "text-slate-400 hover:text-cyan-400 transition-colors text-sm";
 const NAV_ACTIVE = "text-cyan-400 text-sm font-medium";
 
+function normalizeUppercase(value: string) {
+  return value.toLocaleUpperCase("tr-TR");
+}
+
+async function ensureProfileExists(
+  user: AuthIdentity
+) {
+  const supabase = createClient();
+  const email = user.email?.trim();
+
+  if (!email) {
+    return { error: new Error("Kullanıcı e-postası bulunamadı.") };
+  }
+
+  const { error } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      email,
+    },
+    { onConflict: "id" }
+  );
+
+  return { error };
+}
+
 export default function ApplicationsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [applications, setApplications] = useState<Application[]>([]);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -65,7 +105,9 @@ export default function ApplicationsPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/"); return; }
+      await ensureProfileExists({ id: user.id, email: user.email });
       setUserId(user.id);
+      setUserEmail(user.email ?? null);
       const { data } = await supabase.from("applications").select("*").eq("user_id", user.id).order("applied_at", { ascending: false });
       setApplications(data ?? []);
       setLoading(false);
@@ -77,31 +119,62 @@ export default function ApplicationsPage() {
     e.preventDefault();
     if (!userId) return;
     setSaving(true);
+
+    const { error: profileError } = await ensureProfileExists({
+      id: userId,
+      email: userEmail,
+    });
+
+    if (profileError) {
+      toast.error(profileError.message);
+      setSaving(false);
+      return;
+    }
+
     const supabase = createClient();
     const payload = {
-      company_name: form.company_name,
-      department: form.department || null,
+      company_name: normalizeUppercase(form.company_name.trim()),
+      department: form.department.trim() ? normalizeUppercase(form.department.trim()) : null,
       result: form.result,
-      interview_note: form.interview_note || null,
-      experience_note: form.experience_note || null,
+      interview_note: form.interview_note.trim() || null,
+      experience_note: form.experience_note.trim() || null,
       applied_at: form.applied_at,
-      salary: form.salary ? parseInt(form.salary) : null,
-      rating: form.rating,
+      ...(form.salary.trim() ? { salary: parseInt(form.salary, 10) } : {}),
+      ...(form.rating !== null ? { rating: form.rating } : {}),
     };
+
     if (editingId) {
       const { error } = await supabase.from("applications").update({ ...payload, updated_at: new Date().toISOString() }).eq("id", editingId);
-      if (error) toast.error("Güncellenemedi.");
-      else { toast.success("Başvuru güncellendi!"); setApplications((p) => p.map((a) => a.id === editingId ? { ...a, ...payload } : a)); }
+      if (error) {
+        console.error("Application update failed", error);
+        toast.error(error.message || "Güncellenemedi.");
+        setSaving(false);
+        return;
+      }
+
+      toast.success("Başvuru güncellendi!");
+      setApplications((p) => p.map((a) => a.id === editingId ? { ...a, ...payload, salary: "salary" in payload ? payload.salary ?? null : a.salary, rating: "rating" in payload ? payload.rating ?? null : a.rating } : a));
     } else {
       const { data, error } = await supabase.from("applications").insert({ ...payload, user_id: userId }).select().single();
-      if (error) toast.error("Eklenemedi.");
-      else { toast.success("Başvuru eklendi!"); setApplications((p) => [data, ...p]); }
+      if (error) {
+        console.error("Application insert failed", error);
+        toast.error(error.message || "Eklenemedi.");
+        setSaving(false);
+        return;
+      }
+
+      toast.success("Başvuru eklendi!");
+      setApplications((p) => [data, ...p]);
     }
-    setForm(EMPTY_FORM); setEditingId(null); setShowForm(false); setSaving(false);
+
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setShowForm(false);
+    setSaving(false);
   }
 
   function handleEdit(app: Application) {
-    setForm({ company_name: app.company_name, department: app.department ?? "", result: app.result, interview_note: app.interview_note ?? "", experience_note: app.experience_note ?? "", applied_at: app.applied_at, salary: app.salary?.toString() ?? "", rating: app.rating });
+    setForm({ company_name: normalizeUppercase(app.company_name), department: app.department ? normalizeUppercase(app.department) : "", result: app.result, interview_note: app.interview_note ?? "", experience_note: app.experience_note ?? "", applied_at: app.applied_at, salary: app.salary?.toString() ?? "", rating: app.rating });
     setEditingId(app.id); setShowForm(true);
   }
 
@@ -166,21 +239,20 @@ export default function ApplicationsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={LABEL_CLASS}>Şirket Adı *</label>
-                  <input placeholder="Baykar, TAI, TUSAŞ..." value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} required className={INPUT_CLASS} />
+                  <input placeholder="BAYKAR, TAI, TUSAŞ..." value={form.company_name} onChange={(e) => setForm({ ...form, company_name: normalizeUppercase(e.target.value) })} required className={INPUT_CLASS} />
                 </div>
                 <div>
                   <label className={LABEL_CLASS}>Birim / Departman</label>
-                  <input placeholder="Uçuş Yazılımları, Aerodinamik..." value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className={INPUT_CLASS} />
+                  <input placeholder="UÇUŞ YAZILIMLARI, AERODİNAMİK..." value={form.department} onChange={(e) => setForm({ ...form, department: normalizeUppercase(e.target.value) })} className={INPUT_CLASS} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={LABEL_CLASS}>Sonuç</label>
                   <select value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value })} className={SELECT_CLASS}>
-                    <option value="beklemede">Beklemede</option>
-                    <option value="mulakat_bekleniyor">Mülakat Bekleniyor</option>
-                    <option value="olumlu">Olumlu</option>
-                    <option value="ret">Ret</option>
+                    {RESULT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

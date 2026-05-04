@@ -32,6 +32,7 @@ type ApplicationRow = {
 const NEON: Record<string, string> = {
   olumlu: "#4ade80", ret: "#f87171",
   mulakat_bekleniyor: "#22d3ee", beklemede: "#fbbf24",
+  staji_bitirdim: "#34d399",
   total: "#a78bfa", salary: "#fb923c", rating: "#facc15",
   erkek: "#60a5fa", kadın: "#f472b6", belirtmek: "#94a3b8",
 };
@@ -39,7 +40,10 @@ const NEON: Record<string, string> = {
 const RESULT_LABELS: Record<string, string> = {
   olumlu: "Olumlu", ret: "Ret",
   mulakat_bekleniyor: "Mülakat Bekleniyor", beklemede: "Beklemede",
+  staji_bitirdim: "Stajı Bitirdim",
 };
+
+const ACCEPTED_RESULTS = new Set(["olumlu", "staji_bitirdim"]);
 
 const TT = {
   contentStyle: { backgroundColor: "#0d1627", border: "1px solid rgba(34,211,238,0.15)", borderRadius: "10px", color: "#e2e8f0", fontSize: "12px" },
@@ -96,9 +100,9 @@ export default function AnalyticsPage() {
 
   // — Özet —
   const total = filtered.length;
-  const accepted = filtered.filter((a) => a.result === "olumlu").length;
+  const accepted = filtered.filter((a) => ACCEPTED_RESULTS.has(a.result)).length;
   const acceptRate = total > 0 ? ((accepted / total) * 100).toFixed(1) : "0";
-  const acceptedGPAs = filtered.filter((a) => a.result === "olumlu" && a.profiles?.gpa != null).map((a) => a.profiles!.gpa!);
+  const acceptedGPAs = filtered.filter((a) => ACCEPTED_RESULTS.has(a.result) && a.profiles?.gpa != null).map((a) => a.profiles!.gpa!);
   const avgGPA = acceptedGPAs.length > 0 ? (acceptedGPAs.reduce((s, g) => s + g, 0) / acceptedGPAs.length).toFixed(2) : "—";
   const salaries = filtered.filter((a) => a.salary != null && a.salary > 0).map((a) => a.salary!);
   const avgSalary = salaries.length > 0 ? Math.round(salaries.reduce((s, v) => s + v, 0) / salaries.length).toLocaleString("tr-TR") : "—";
@@ -110,7 +114,7 @@ export default function AnalyticsPage() {
     filtered.reduce((acc, a) => {
       const k = a.company_name;
       if (!acc[k]) acc[k] = { company: k, total: 0, olumlu: 0, ret: 0 };
-      acc[k].total++; if (a.result === "olumlu") acc[k].olumlu++; if (a.result === "ret") acc[k].ret++;
+      acc[k].total++; if (ACCEPTED_RESULTS.has(a.result)) acc[k].olumlu++; if (a.result === "ret") acc[k].ret++;
       return acc;
     }, {} as Record<string, { company: string; total: number; olumlu: number; ret: number }>)
   ).sort((a, b) => b.total - a.total).slice(0, 15);
@@ -163,14 +167,14 @@ export default function AnalyticsPage() {
   // Cinsiyet bazında kabul oranı
   const genderAccept = ["erkek", "kadın"].map((g) => {
     const apps = filtered.filter((a) => a.profiles?.gender === g);
-    const acc = apps.filter((a) => a.result === "olumlu").length;
+    const acc = apps.filter((a) => ACCEPTED_RESULTS.has(a.result)).length;
     return { gender: g === "erkek" ? "Erkek" : "Kadın", total: apps.length, accepted: acc, rate: apps.length > 0 ? parseFloat(((acc / apps.length) * 100).toFixed(1)) : 0 };
   }).filter((d) => d.total > 0);
 
   // Bölüm bazında
   const deptStats = ["Uçak Mühendisliği", "Uzay Mühendisliği"].map((dept) => {
     const apps = filtered.filter((a) => a.profiles?.department === dept);
-    const acc = apps.filter((a) => a.result === "olumlu").length;
+    const acc = apps.filter((a) => ACCEPTED_RESULTS.has(a.result)).length;
     return { dept: dept.replace(" Mühendisliği", ""), total: apps.length, accepted: acc, rate: apps.length > 0 ? parseFloat(((acc / apps.length) * 100).toFixed(1)) : 0 };
   }).filter((d) => d.total > 0);
 
@@ -179,7 +183,7 @@ export default function AnalyticsPage() {
     filtered.reduce((acc, a) => {
       const c = a.profiles?.class_year ?? "Belirtilmemiş";
       if (!acc[c]) acc[c] = { total: 0, accepted: 0 };
-      acc[c].total++; if (a.result === "olumlu") acc[c].accepted++;
+      acc[c].total++; if (ACCEPTED_RESULTS.has(a.result)) acc[c].accepted++;
       return acc;
     }, {} as Record<string, { total: number; accepted: number }>)
   ).map(([year, { total, accepted }]) => ({ year, total, accepted, rate: parseFloat(((accepted / total) * 100).toFixed(1)) }))
@@ -195,7 +199,7 @@ export default function AnalyticsPage() {
     { label: "3.75–4.00", min: 3.75, max: 4.01 },
   ].map(({ label, min, max }) => {
     const apps = filtered.filter((a) => a.profiles?.gpa != null && a.profiles.gpa >= min && a.profiles.gpa < max);
-    const acc = apps.filter((a) => a.result === "olumlu").length;
+    const acc = apps.filter((a) => ACCEPTED_RESULTS.has(a.result)).length;
     return { label, total: apps.length, accepted: acc, rate: apps.length > 0 ? parseFloat(((acc / apps.length) * 100).toFixed(1)) : 0 };
   }).filter((b) => b.total > 0);
 
@@ -205,7 +209,7 @@ export default function AnalyticsPage() {
   const interestData = Object.entries(interestCounts).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([interest, count]) => ({ interest, count }));
 
   const acceptedInterestCounts: Record<string, number> = {};
-  filtered.filter((a) => a.result === "olumlu").forEach((a) => a.profiles?.interests?.forEach((i) => { acceptedInterestCounts[i] = (acceptedInterestCounts[i] ?? 0) + 1; }));
+  filtered.filter((a) => ACCEPTED_RESULTS.has(a.result)).forEach((a) => a.profiles?.interests?.forEach((i) => { acceptedInterestCounts[i] = (acceptedInterestCounts[i] ?? 0) + 1; }));
   const acceptedInterestData = Object.entries(acceptedInterestCounts).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([interest, count]) => ({ interest, count }));
 
   // Çap / Yandal
@@ -259,7 +263,7 @@ export default function AnalyticsPage() {
             <div>
               <p className="text-xs text-slate-400 mb-1.5 font-medium">Sonuç</p>
               <div className="flex gap-2 flex-wrap">
-                {["tümü", "olumlu", "ret", "mulakat_bekleniyor", "beklemede"].map((r) => (
+                {["tümü", "olumlu", "staji_bitirdim", "ret", "mulakat_bekleniyor", "beklemede"].map((r) => (
                   <button key={r} onClick={() => setResultFilter(r)}
                     className={`px-3 py-2 rounded-lg text-xs border transition-all ${resultFilter === r ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40" : "bg-slate-800/50 text-slate-400 border-slate-700/50 hover:border-slate-600/50"}`}>
                     {r === "tümü" ? "Tümü" : RESULT_LABELS[r]}
@@ -541,7 +545,7 @@ export default function AnalyticsPage() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {comments.slice(0, 20).map((a) => {
-                    const rc = { olumlu: "text-green-400 border-green-500/30 bg-green-500/10", ret: "text-red-400 border-red-500/30 bg-red-500/10", mulakat_bekleniyor: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10", beklemede: "text-amber-400 border-amber-500/30 bg-amber-500/10" }[a.result] ?? "";
+                    const rc = { olumlu: "text-green-400 border-green-500/30 bg-green-500/10", staji_bitirdim: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10", ret: "text-red-400 border-red-500/30 bg-red-500/10", mulakat_bekleniyor: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10", beklemede: "text-amber-400 border-amber-500/30 bg-amber-500/10" }[a.result] ?? "";
                     return (
                       <div key={a.id} className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-5 space-y-3">
                         <div className="flex items-center gap-2 justify-between">

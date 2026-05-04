@@ -19,10 +19,12 @@ create table if not exists public.applications (
   user_id uuid references public.profiles(id) on delete cascade not null,
   company_name text not null,
   department text,
-  result text check (result in ('beklemede', 'mulakat_bekleniyor', 'olumlu', 'ret')) default 'beklemede',
+  result text check (result in ('beklemede', 'mulakat_bekleniyor', 'olumlu', 'staji_bitirdim', 'ret')) default 'beklemede',
   interview_note text,
   experience_note text,
   applied_at date default current_date,
+  salary integer,
+  rating integer check (rating between 1 and 5),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

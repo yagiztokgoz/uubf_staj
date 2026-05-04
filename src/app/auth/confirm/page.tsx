@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import type { EmailOtpType } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 type AuthConfirmPageProps = {
   searchParams: Promise<{
@@ -61,7 +60,6 @@ export default function AuthConfirmPage({ searchParams }: AuthConfirmPageProps) 
     : resolvedSearchParams.type;
   const [failed, setFailed] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [verificationError, setVerificationError] = useState<string | null>(null);
   const hasTokenLink = Boolean(tokenHash);
   const nextPath = resolveRedirectPath(
     next ?? redirectTo,
@@ -74,22 +72,12 @@ export default function AuthConfirmPage({ searchParams }: AuthConfirmPageProps) 
     }
 
     setVerifying(true);
-    setVerificationError(null);
-
-    const supabase = createClient();
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: (otpType ?? "email") as EmailOtpType,
-    });
-
-    if (verifyError) {
-      setVerificationError(verifyError.message);
-      setFailed(true);
-      setVerifying(false);
-      return;
-    }
-
-    router.replace(nextPath);
+    const verifyUrl = new URL("/auth/callback", window.location.origin);
+    verifyUrl.searchParams.set("token_hash", tokenHash);
+    verifyUrl.searchParams.set("type", otpType ?? "email");
+    verifyUrl.searchParams.set("next", nextPath);
+    verifyUrl.searchParams.set("confirm", "1");
+    window.location.assign(verifyUrl.toString());
   }
 
   useEffect(() => {
@@ -136,8 +124,6 @@ export default function AuthConfirmPage({ searchParams }: AuthConfirmPageProps) 
 
   const message = error
     ? error
-    : verificationError
-      ? verificationError
     : hasTokenLink
       ? "Giriş linkin hazır. Güvenlik için aşağıdaki butona tıklayarak girişi tamamla."
     : failed
@@ -148,7 +134,7 @@ export default function AuthConfirmPage({ searchParams }: AuthConfirmPageProps) 
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="text-center space-y-4">
         <p className="text-slate-500">{message}</p>
-        {hasTokenLink && !verificationError ? (
+        {hasTokenLink ? (
           <button
             type="button"
             onClick={handleVerify}

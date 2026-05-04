@@ -35,6 +35,11 @@ type CommentRow = {
   experience_note: string | null;
 };
 
+type PublicSummaryRow = {
+  total_count: number;
+  accepted_count: number;
+};
+
 const NEON: Record<string, string> = {
   olumlu: "#4ade80", ret: "#f87171",
   mulakat_bekleniyor: "#22d3ee", beklemede: "#fbbf24",
@@ -74,6 +79,7 @@ function StatCard({ label, value, sub, color = "text-slate-100" }: { label: stri
 export default function AnalyticsPage() {
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [comments, setComments] = useState<CommentRow[]>([]);
+  const [publicSummary, setPublicSummary] = useState<PublicSummaryRow>({ total_count: 0, accepted_count: 0 });
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [companyFilter, setCompanyFilter] = useState("tümü");
@@ -83,17 +89,33 @@ export default function AnalyticsPage() {
   useEffect(() => {
     async function loadData() {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const [
+        { data: { user } },
+        { data: summaryData },
+      ] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from("analytics_public_summary").select("total_count, accepted_count").single(),
+      ]);
+
       setLoggedIn(!!user);
-      const { data } = await supabase
-        .from("analytics_applications_anonymous")
-        .select("company_name, application_department, result, found_with_referral, salary, rating, gpa, interests, profile_department, class_year, minor_department, gender");
-      setApplications((data as unknown as ApplicationRow[]) ?? []);
+      if (summaryData) {
+        setPublicSummary(summaryData as PublicSummaryRow);
+      }
 
       if (user) {
-        const { data: commentsData } = await supabase
-          .from("analytics_comments_authenticated")
-          .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note");
+        const [
+          { data: applicationsData },
+          { data: commentsData },
+        ] = await Promise.all([
+          supabase
+            .from("analytics_applications_anonymous")
+            .select("company_name, application_department, result, found_with_referral, salary, rating, gpa, interests, profile_department, class_year, minor_department, gender"),
+          supabase
+            .from("analytics_comments_authenticated")
+            .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note"),
+        ]);
+
+        setApplications((applicationsData as unknown as ApplicationRow[]) ?? []);
         setComments((commentsData as unknown as CommentRow[]) ?? []);
       }
 
@@ -128,6 +150,10 @@ export default function AnalyticsPage() {
         : comment.result === resultFilter);
     return mc && md && mr;
   }), [comments, companyFilter, departmentFilter, resultFilter]);
+
+  const publicTotal = publicSummary.total_count ?? 0;
+  const publicAccepted = publicSummary.accepted_count ?? 0;
+  const publicAcceptRate = publicTotal > 0 ? ((publicAccepted / publicTotal) * 100).toFixed(1) : "0";
 
   // — Özet —
   const total = filtered.length;
@@ -272,53 +298,79 @@ export default function AnalyticsPage() {
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-100">Staj Analitikleri</h2>
-          <p className="text-slate-500 mt-1 text-sm">Tüm öğrencilerin anonim staj verileri</p>
+          <p className="text-slate-500 mt-1 text-sm">UUBF staj başvurularından derlenen özet veriler</p>
           <p className="text-slate-600 mt-1 text-xs">
             {loggedIn
-              ? "Yorumlar sadece giriş yapan kullanıcılara gösterilir, kimlik bilgileri yine gizli tutulur."
-              : "Yorumlar sadece giriş yapan kullanıcılara gösterilir, kimlik bilgileri herkese açık analitikte gösterilmez."}
+              ? "Giriş yaptığın için detaylı istatistikler ve yorumlar açık. Kimlik bilgileri yine gizli tutulur."
+              : "Toplam başvuru ve genel kabul oranı herkese açık. Diğer istatistikler ve yorumlar için giriş yapmalısın."}
           </p>
-        </div>
-
-        {/* Filtreler */}
-        <div className={CARD}>
-          <div className="flex gap-4 flex-wrap items-end">
-            <div>
-              <p className="text-xs text-slate-400 mb-1.5 font-medium">Şirket</p>
-              <select value={companyFilter} onChange={(e) => { setCompanyFilter(e.target.value); setDepartmentFilter("tümü"); }} className={`${SC} min-w-[180px]`}>
-                <option value="tümü">Tüm Şirketler</option>
-                {uniqueCompanies.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            {uniqueDepts.length > 0 && (
-              <div>
-                <p className="text-xs text-slate-400 mb-1.5 font-medium">Birim</p>
-                <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className={`${SC} min-w-[160px]`}>
-                  <option value="tümü">Tüm Birimler</option>
-                  {uniqueDepts.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-            )}
-            <div>
-              <p className="text-xs text-slate-400 mb-1.5 font-medium">Sonuç</p>
-              <div className="flex gap-2 flex-wrap">
-                {["tümü", "olumlu", "staji_bitirdim", "ret", "mulakat_bekleniyor", "beklemede"].map((r) => (
-                  <button key={r} onClick={() => setResultFilter(r)}
-                    className={`px-3 py-2 rounded-lg text-xs border transition-all ${resultFilter === r ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40" : "bg-slate-800/50 text-slate-400 border-slate-700/50 hover:border-slate-600/50"}`}>
-                    {r === "tümü" ? "Tümü" : RESULT_LABELS[r]}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
           </div>
+        ) : !loggedIn ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <StatCard label="Toplam Başvuru" value={publicTotal} />
+              <StatCard label="Genel Kabul Oranı" value={`%${publicAcceptRate}`} color="text-green-400" />
+            </div>
+
+            <div className={`${CARD} text-center space-y-4`}>
+              <div className="w-14 h-14 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 flex items-center justify-center mx-auto text-xl font-semibold">
+                i
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-slate-100">Detaylı Analitikler ve Yorumlar İçin Giriş Gerekli</h3>
+                <p className="text-sm text-slate-400 max-w-2xl mx-auto">
+                  Maaş, puan, demografik kırılımlar, ilgi alanları, şirket detayları ve staj yorumlarını görmek için
+                  İTÜ e-postanla giriş yapmalısın.
+                </p>
+              </div>
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:from-cyan-400 hover:to-blue-500"
+              >
+                Giriş Yap ve Tüm Analitikleri Gör
+              </Link>
+            </div>
+          </>
         ) : (
           <>
+            {/* Filtreler */}
+            <div className={CARD}>
+              <div className="flex gap-4 flex-wrap items-end">
+                <div>
+                  <p className="text-xs text-slate-400 mb-1.5 font-medium">Şirket</p>
+                  <select value={companyFilter} onChange={(e) => { setCompanyFilter(e.target.value); setDepartmentFilter("tümü"); }} className={`${SC} min-w-[180px]`}>
+                    <option value="tümü">Tüm Şirketler</option>
+                    {uniqueCompanies.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                {uniqueDepts.length > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1.5 font-medium">Birim</p>
+                    <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className={`${SC} min-w-[160px]`}>
+                      <option value="tümü">Tüm Birimler</option>
+                      {uniqueDepts.map((d) => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-slate-400 mb-1.5 font-medium">Sonuç</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {["tümü", "olumlu", "staji_bitirdim", "ret", "mulakat_bekleniyor", "beklemede"].map((r) => (
+                      <button key={r} onClick={() => setResultFilter(r)}
+                        className={`px-3 py-2 rounded-lg text-xs border transition-all ${resultFilter === r ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40" : "bg-slate-800/50 text-slate-400 border-slate-700/50 hover:border-slate-600/50"}`}>
+                        {r === "tümü" ? "Tümü" : RESULT_LABELS[r]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Özet kartlar */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
               <StatCard label="Toplam Başvuru" value={total} />

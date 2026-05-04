@@ -32,7 +32,16 @@ from public.applications as a
 join public.profiles as p
   on p.id = a.user_id;
 
-grant select on public.analytics_applications_anonymous to anon, authenticated;
+revoke all on public.analytics_applications_anonymous from anon, authenticated;
+grant select on public.analytics_applications_anonymous to authenticated;
+
+create or replace view public.analytics_public_summary as
+select
+  count(*)::integer as total_count,
+  count(*) filter (where result in ('olumlu', 'staji_bitirdim'))::integer as accepted_count
+from public.applications;
+
+grant select on public.analytics_public_summary to anon, authenticated;
 
 create or replace view public.analytics_comments_authenticated as
 select
@@ -48,4 +57,5 @@ from public.applications as a
 where a.interview_note is not null
    or a.experience_note is not null;
 
+revoke all on public.analytics_comments_authenticated from anon, authenticated;
 grant select on public.analytics_comments_authenticated to authenticated;

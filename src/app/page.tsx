@@ -74,7 +74,7 @@ export default function LoginPage() {
                 <input
                   id="email"
                   type="email"
-                  placeholder="cemil_kurtcebe@itu.edu.tr"
+                  placeholder="cemilhoca@itu.edu.tr"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

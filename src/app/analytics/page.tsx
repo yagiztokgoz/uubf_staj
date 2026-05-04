@@ -14,6 +14,7 @@ type ApplicationRow = {
   company_name: string;
   department: string | null;
   result: string;
+  found_with_referral: boolean | null;
   interview_note: string | null;
   experience_note: string | null;
   salary: number | null;
@@ -33,6 +34,7 @@ const NEON: Record<string, string> = {
   olumlu: "#4ade80", ret: "#f87171",
   mulakat_bekleniyor: "#22d3ee", beklemede: "#fbbf24",
   staji_bitirdim: "#34d399",
+  referral: "#e879f9", organic: "#60a5fa",
   total: "#a78bfa", salary: "#fb923c", rating: "#facc15",
   erkek: "#60a5fa", kadın: "#f472b6", belirtmek: "#94a3b8",
 };
@@ -79,7 +81,7 @@ export default function AnalyticsPage() {
       setLoggedIn(!!user);
       const { data } = await supabase
         .from("applications")
-        .select("id, company_name, department, result, interview_note, experience_note, salary, rating, profiles(gpa, interests, thesis_topic, department, class_year, minor_department, gender)");
+        .select("id, company_name, department, result, found_with_referral, interview_note, experience_note, salary, rating, profiles(gpa, interests, thesis_topic, department, class_year, minor_department, gender)");
       setApplications((data as unknown as ApplicationRow[]) ?? []);
       setLoading(false);
     }
@@ -112,6 +114,8 @@ export default function AnalyticsPage() {
   const avgSalary = salaries.length > 0 ? Math.round(salaries.reduce((s, v) => s + v, 0) / salaries.length).toLocaleString("tr-TR") : "—";
   const ratings = filtered.filter((a) => a.rating != null).map((a) => a.rating!);
   const avgRating = ratings.length > 0 ? (ratings.reduce((s, v) => s + v, 0) / ratings.length).toFixed(1) : "—";
+  const referralCount = filtered.filter((a) => a.found_with_referral).length;
+  const referralRate = total > 0 ? ((referralCount / total) * 100).toFixed(1) : "0";
 
   // — Şirketler —
   const companyStats = Object.values(
@@ -159,6 +163,10 @@ export default function AnalyticsPage() {
   const paidDist = [
     { name: "Ücretli", value: paidCount, key: "paid" },
     { name: "Ücretsiz / Bilinmiyor", value: unpaidCount, key: "unpaid" },
+  ].filter((d) => d.value > 0);
+  const referralDist = [
+    { name: "Torpille Bulunan", value: referralCount, key: "referral" },
+    { name: "Torpilsiz", value: total - referralCount, key: "organic" },
   ].filter((d) => d.value > 0);
 
   // — Demografik —
@@ -285,13 +293,14 @@ export default function AnalyticsPage() {
         ) : (
           <>
             {/* Özet kartlar */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
               <StatCard label="Toplam Başvuru" value={total} />
               <StatCard label="Kabul Oranı" value={`%${acceptRate}`} color="text-green-400" />
               <StatCard label="Kabul Edilen" value={accepted} color="text-green-400" />
               <StatCard label="Kabul Ort. GPA" value={avgGPA} color="text-cyan-400" />
               <StatCard label="Ort. Maaş" value={avgSalary === "—" ? "—" : `${avgSalary} ₺`} color="text-orange-400" sub={`${salaries.length} veri`} />
               <StatCard label="Ort. Puan" value={avgRating === "—" ? "—" : `${avgRating} / 5`} color="text-yellow-400" sub={`${ratings.length} değerlendirme`} />
+              <StatCard label="Torpil Oranı" value={`%${referralRate}`} color="text-fuchsia-300" sub={`${referralCount} kayıt`} />
             </div>
 
             <Tabs defaultValue="companies">
@@ -323,7 +332,7 @@ export default function AnalyticsPage() {
 
               {/* ── Maaş & Puan ── */}
               <TabsContent value="salary" className="mt-4 space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className={`${CARD} text-center`}>
                     <p className="text-xs text-slate-500 mb-1">Maaşlı Staj</p>
                     <p className="text-2xl font-bold text-orange-400">{total > 0 ? `%${((paidCount / total) * 100).toFixed(0)}` : "—"}</p>
@@ -336,6 +345,11 @@ export default function AnalyticsPage() {
                   <div className={`${CARD} text-center`}>
                     <p className="text-xs text-slate-500 mb-1">En Düşük Maaş</p>
                     <p className="text-2xl font-bold text-orange-400">{salaries.length > 0 ? `${Math.min(...salaries).toLocaleString("tr-TR")} ₺` : "—"}</p>
+                  </div>
+                  <div className={`${CARD} text-center`}>
+                    <p className="text-xs text-slate-500 mb-1">Torpille Bulunan</p>
+                    <p className="text-2xl font-bold text-fuchsia-300">{referralCount}</p>
+                    <p className="text-xs text-slate-600 mt-0.5">%{referralRate}</p>
                   </div>
                 </div>
 
@@ -381,6 +395,38 @@ export default function AnalyticsPage() {
                       </ResponsiveContainer>
                     </div>
                   )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className={CARD}>
+                    <h3 className="text-base font-semibold text-slate-100 mb-5">Maaşlı / Maaşsız Dağılımı</h3>
+                    {paidDist.length === 0 ? <p className="text-slate-500 text-center py-12">Veri yok</p> : (
+                      <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                          <Pie data={paidDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={42}
+                            label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ""} %${((percent ?? 0) * 100).toFixed(0)}`}>
+                            {paidDist.map((entry) => <Cell key={entry.key} fill={entry.key === "paid" ? NEON.salary : "#64748b"} />)}
+                          </Pie>
+                          <Tooltip contentStyle={TT.contentStyle} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+
+                  <div className={CARD}>
+                    <h3 className="text-base font-semibold text-slate-100 mb-5">Torpil Dağılımı</h3>
+                    {referralDist.length === 0 ? <p className="text-slate-500 text-center py-12">Veri yok</p> : (
+                      <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                          <Pie data={referralDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={42}
+                            label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ""} %${((percent ?? 0) * 100).toFixed(0)}`}>
+                            {referralDist.map((entry) => <Cell key={entry.key} fill={NEON[entry.key]} />)}
+                          </Pie>
+                          <Tooltip contentStyle={TT.contentStyle} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
                 </div>
               </TabsContent>
 

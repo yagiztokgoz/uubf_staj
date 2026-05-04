@@ -20,6 +20,7 @@ create table if not exists public.applications (
   company_name text not null,
   department text,
   result text check (result in ('beklemede', 'mulakat_bekleniyor', 'olumlu', 'staji_bitirdim', 'ret')) default 'beklemede',
+  found_with_referral boolean default false,
   interview_note text,
   experience_note text,
   applied_at date default current_date,

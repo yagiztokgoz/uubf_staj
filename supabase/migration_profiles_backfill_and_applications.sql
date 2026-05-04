@@ -13,6 +13,9 @@ alter table public.applications
   add column if not exists rating integer check (rating between 1 and 5);
 
 alter table public.applications
+  add column if not exists found_with_referral boolean default false;
+
+alter table public.applications
   drop constraint if exists applications_result_check;
 
 alter table public.applications

@@ -11,6 +11,7 @@ type Application = {
   company_name: string;
   department: string | null;
   result: string;
+  found_with_referral: boolean | null;
   interview_note: string | null;
   experience_note: string | null;
   applied_at: string;
@@ -27,11 +28,20 @@ type FormState = {
   applied_at: string;
   salary: string;
   rating: number | null;
+  found_with_referral: boolean;
 };
 
 type AuthIdentity = {
   id: string;
   email?: string | null;
+};
+
+type ProfileGate = {
+  gender: string | null;
+  department: string | null;
+  class_year: string | null;
+  gpa: number | null;
+  interests: string[] | null;
 };
 
 const RESULT_STYLE: Record<string, { label: string; cls: string }> = {
@@ -54,7 +64,7 @@ const EMPTY_FORM: FormState = {
   company_name: "", department: "", result: "beklemede",
   interview_note: "", experience_note: "",
   applied_at: new Date().toISOString().split("T")[0],
-  salary: "", rating: null,
+  salary: "", rating: null, found_with_referral: false,
 };
 
 const INPUT_CLASS = "w-full bg-slate-800/50 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-all";
@@ -89,6 +99,43 @@ async function ensureProfileExists(
   return { error };
 }
 
+function getIncompleteProfileMessage(profile: ProfileGate | null) {
+  if (!profile) {
+    return "Başvuru yapmadan önce profilini doldurmalısın.";
+  }
+
+  if (!profile.gender) return "Başvuru yapmadan önce profilindeki cinsiyet alanını doldurmalısın.";
+  if (!profile.department) return "Başvuru yapmadan önce profilindeki bölüm alanını doldurmalısın.";
+  if (!profile.class_year) return "Başvuru yapmadan önce profilindeki sınıf alanını doldurmalısın.";
+  if (profile.gpa == null) return "Başvuru yapmadan önce profilindeki GPA alanını doldurmalısın.";
+  if (!profile.interests || profile.interests.length === 0) {
+    return "Başvuru yapmadan önce en az bir ilgi alanı seçmelisin.";
+  }
+
+  return null;
+}
+
+async function requireCompletedProfile(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("gender, department, class_year, gpa, interests")
+    .eq("id", userId)
+    .single();
+
+  if (error) {
+    return {
+      error,
+      message: "Profil bilgileri kontrol edilemedi.",
+    };
+  }
+
+  return {
+    error: null,
+    message: getIncompleteProfileMessage(data as ProfileGate | null),
+  };
+}
+
 export default function ApplicationsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -105,7 +152,20 @@ export default function ApplicationsPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/"); return; }
-      await ensureProfileExists({ id: user.id, email: user.email });
+      const { error: profileBootstrapError } = await ensureProfileExists({ id: user.id, email: user.email });
+      if (profileBootstrapError) {
+        toast.error(profileBootstrapError.message);
+        router.replace("/profile");
+        return;
+      }
+
+      const { message: profileMessage } = await requireCompletedProfile(user.id);
+      if (profileMessage) {
+        toast.error(profileMessage);
+        router.replace("/profile");
+        return;
+      }
+
       setUserId(user.id);
       setUserEmail(user.email ?? null);
       const { data } = await supabase.from("applications").select("*").eq("user_id", user.id).order("applied_at", { ascending: false });
@@ -131,11 +191,20 @@ export default function ApplicationsPage() {
       return;
     }
 
+    const { message: profileMessage } = await requireCompletedProfile(userId);
+    if (profileMessage) {
+      toast.error(profileMessage);
+      setSaving(false);
+      router.replace("/profile");
+      return;
+    }
+
     const supabase = createClient();
     const payload = {
       company_name: normalizeUppercase(form.company_name.trim()),
       department: form.department.trim() ? normalizeUppercase(form.department.trim()) : null,
       result: form.result,
+      found_with_referral: form.found_with_referral,
       interview_note: form.interview_note.trim() || null,
       experience_note: form.experience_note.trim() || null,
       applied_at: form.applied_at,
@@ -153,7 +222,18 @@ export default function ApplicationsPage() {
       }
 
       toast.success("Başvuru güncellendi!");
-      setApplications((p) => p.map((a) => a.id === editingId ? { ...a, ...payload, salary: "salary" in payload ? payload.salary ?? null : a.salary, rating: "rating" in payload ? payload.rating ?? null : a.rating } : a));
+      setApplications((p) =>
+        p.map((a) =>
+          a.id === editingId
+            ? {
+                ...a,
+                ...payload,
+                salary: "salary" in payload ? payload.salary ?? null : a.salary,
+                rating: "rating" in payload ? payload.rating ?? null : a.rating,
+              }
+            : a
+        )
+      );
     } else {
       const { data, error } = await supabase.from("applications").insert({ ...payload, user_id: userId }).select().single();
       if (error) {
@@ -174,7 +254,17 @@ export default function ApplicationsPage() {
   }
 
   function handleEdit(app: Application) {
-    setForm({ company_name: normalizeUppercase(app.company_name), department: app.department ? normalizeUppercase(app.department) : "", result: app.result, interview_note: app.interview_note ?? "", experience_note: app.experience_note ?? "", applied_at: app.applied_at, salary: app.salary?.toString() ?? "", rating: app.rating });
+    setForm({
+      company_name: normalizeUppercase(app.company_name),
+      department: app.department ? normalizeUppercase(app.department) : "",
+      result: app.result,
+      found_with_referral: Boolean(app.found_with_referral),
+      interview_note: app.interview_note ?? "",
+      experience_note: app.experience_note ?? "",
+      applied_at: app.applied_at,
+      salary: app.salary?.toString() ?? "",
+      rating: app.rating,
+    });
     setEditingId(app.id); setShowForm(true);
   }
 
@@ -280,6 +370,15 @@ export default function ApplicationsPage() {
                   </div>
                 </div>
               </div>
+              <label className="flex items-center gap-3 rounded-xl border border-slate-700/50 bg-slate-800/30 px-4 py-3 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={form.found_with_referral}
+                  onChange={(e) => setForm({ ...form, found_with_referral: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500/40"
+                />
+                Stajı torpille buldum
+              </label>
               <div>
                 <label className={LABEL_CLASS}>Mülakat Notu</label>
                 <textarea placeholder="Mülakat süreci, sorulan sorular..." rows={2} value={form.interview_note} onChange={(e) => setForm({ ...form, interview_note: e.target.value })} className={TEXTAREA_CLASS} />
@@ -316,6 +415,11 @@ export default function ApplicationsPage() {
                         <span className="font-semibold text-slate-100">{app.company_name}</span>
                         {app.department && <span className="text-slate-500 text-sm">— {app.department}</span>}
                         <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium border ${r.cls}`}>{r.label}</span>
+                        {app.found_with_referral ? (
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-medium border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300">
+                            Torpille Bulundu
+                          </span>
+                        ) : null}
                       </div>
                         <div className="flex items-center gap-3 text-xs text-slate-600">
                           <span>{app.applied_at}</span>

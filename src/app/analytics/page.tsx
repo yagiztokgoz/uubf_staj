@@ -94,7 +94,11 @@ export default function AnalyticsPage() {
   const filtered = useMemo(() => applications.filter((a) => {
     const mc = companyFilter === "tümü" || a.company_name === companyFilter;
     const md = departmentFilter === "tümü" || a.department === departmentFilter;
-    const mr = resultFilter === "tümü" || a.result === resultFilter;
+    const mr =
+      resultFilter === "tümü" ||
+      (resultFilter === "olumlu"
+        ? ACCEPTED_RESULTS.has(a.result)
+        : a.result === resultFilter);
     return mc && md && mr;
   }), [applications, companyFilter, departmentFilter, resultFilter]);
 

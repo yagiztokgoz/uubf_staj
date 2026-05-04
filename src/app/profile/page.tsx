@@ -48,6 +48,7 @@ const SELECT_CLASS = "w-full bg-slate-800/50 border border-slate-700/50 text-sla
 const TEXTAREA_CLASS = "w-full bg-slate-800/50 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-all resize-none";
 const CARD_CLASS = "bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6";
 const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-1.5";
+const REQUIRED_MARK = <span className="text-cyan-400">*</span>;
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -103,22 +104,49 @@ export default function ProfilePage() {
     setCustomInterest("");
   }
 
+  function getValidationError() {
+    if (!form.gender) return "Cinsiyet zorunlu.";
+    if (!form.department) return "Bölüm zorunlu.";
+    if (!form.class_year) return "Sınıf zorunlu.";
+
+    const gpa = form.gpa.trim();
+    if (!gpa) return "GPA zorunlu.";
+
+    const parsedGpa = parseFloat(gpa);
+    if (Number.isNaN(parsedGpa) || parsedGpa < 0 || parsedGpa > 4) {
+      return "GPA 0.00 ile 4.00 arasında olmalı.";
+    }
+
+    if (form.interests.length === 0) {
+      return "En az bir ilgi alanı seçmelisin.";
+    }
+
+    return null;
+  }
+
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!userId) return;
+
+    const validationError = getValidationError();
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     setSaving(true);
     const supabase = createClient();
     const { error } = await supabase.from("profiles").update({
-      gender: form.gender || null,
+      gender: form.gender,
       department: form.department,
       minor_department: form.minor_department || null,
       class_year: form.class_year,
-      gpa: form.gpa ? parseFloat(form.gpa) : null,
+      gpa: parseFloat(form.gpa),
       interests: form.interests,
-      thesis_topic: form.thesis_topic,
-      thesis_description: form.thesis_description,
+      thesis_topic: form.thesis_topic || null,
+      thesis_description: form.thesis_description || null,
       thesis_advisor: form.thesis_advisor || null,
-      projects: form.projects,
+      projects: form.projects || null,
       updated_at: new Date().toISOString(),
     }).eq("id", userId);
     if (error) toast.error("Kaydedilemedi.");
@@ -170,7 +198,7 @@ export default function ProfilePage() {
               Akademik Bilgiler
             </h3>
             <div className="mb-4">
-              <label className={LABEL_CLASS}>Cinsiyet</label>
+              <label className={LABEL_CLASS}>Cinsiyet {REQUIRED_MARK}</label>
               <div className="flex gap-2">
                 {[["erkek", "Erkek"], ["kadın", "Kadın"], ["belirtmek istemiyorum", "Belirtmek İstemiyorum"]].map(([val, label]) => (
                   <button key={val} type="button" onClick={() => setForm({ ...form, gender: val })}
@@ -187,15 +215,15 @@ export default function ProfilePage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={LABEL_CLASS}>Bölüm</label>
-                <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className={SELECT_CLASS}>
+                <label className={LABEL_CLASS}>Bölüm {REQUIRED_MARK}</label>
+                <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className={SELECT_CLASS} required>
                   <option value="">Bölüm seç...</option>
                   {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div>
-                <label className={LABEL_CLASS}>Sınıf</label>
-                <select value={form.class_year} onChange={(e) => setForm({ ...form, class_year: e.target.value })} className={SELECT_CLASS}>
+                <label className={LABEL_CLASS}>Sınıf {REQUIRED_MARK}</label>
+                <select value={form.class_year} onChange={(e) => setForm({ ...form, class_year: e.target.value })} className={SELECT_CLASS} required>
                   <option value="">Sınıf seç...</option>
                   {CLASS_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
@@ -214,11 +242,12 @@ export default function ProfilePage() {
                 />
               </div>
               <div>
-                <label className={LABEL_CLASS}>GPA <span className="text-slate-500 text-xs">(4.00 üzerinden)</span></label>
+                <label className={LABEL_CLASS}>GPA {REQUIRED_MARK} <span className="text-slate-500 text-xs">(4.00 üzerinden)</span></label>
                 <input
                   type="number" step="0.01" min="0" max="4" placeholder="3.50"
                   value={form.gpa}
                   onChange={(e) => setForm({ ...form, gpa: e.target.value })}
+                  required
                   className={INPUT_CLASS}
                 />
               </div>
@@ -229,9 +258,9 @@ export default function ProfilePage() {
           <div className={CARD_CLASS}>
             <h3 className="text-base font-semibold text-slate-100 mb-1 flex items-center gap-2">
               <span className="w-1 h-4 bg-gradient-to-b from-purple-400 to-indigo-500 rounded-full" />
-              Akademik İlgi Alanları
+              Akademik İlgi Alanları {REQUIRED_MARK}
             </h3>
-            <p className="text-xs text-slate-500 mb-4">İlgilendiğin alanları seç, dilersen özel ekle</p>
+            <p className="text-xs text-slate-500 mb-4">İlgilendiğin alanları seç, dilersen özel ekle. En az bir seçim zorunlu.</p>
             <div className="flex flex-wrap gap-2">
               {PRESET_INTERESTS.map((interest) => {
                 const selected = form.interests.includes(interest);
@@ -282,7 +311,7 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={LABEL_CLASS}>Tez Konusu</label>
+                  <label className={LABEL_CLASS}>Tez Konusu <span className="text-slate-500 text-xs">(opsiyonel)</span></label>
                   <input placeholder="Örn: CFD ile Kanat Profili Optimizasyonu"
                     value={form.thesis_topic}
                     onChange={(e) => setForm({ ...form, thesis_topic: e.target.value })}
@@ -301,7 +330,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               <div>
-                <label className={LABEL_CLASS}>Kısa Açıklama</label>
+                <label className={LABEL_CLASS}>Kısa Açıklama <span className="text-slate-500 text-xs">(opsiyonel)</span></label>
                 <textarea placeholder="Tezinizin amacı, yöntemi ve sonuçları..." rows={3}
                   value={form.thesis_description}
                   onChange={(e) => setForm({ ...form, thesis_description: e.target.value })}
@@ -317,7 +346,7 @@ export default function ProfilePage() {
               <span className="w-1 h-4 bg-gradient-to-b from-green-400 to-emerald-500 rounded-full" />
               Projeler
             </h3>
-            <p className="text-xs text-slate-500 mb-4">Yaptığın projelerden kısaca bahset</p>
+            <p className="text-xs text-slate-500 mb-4">Yaptığın projelerden kısaca bahset <span className="text-slate-600">(opsiyonel)</span></p>
             <textarea
               placeholder="Örn: TEKNOFEST yarışmaları (roket, İHA, savaşan İHA...), proje takımları (rocketry, satellite, formula...), kişisel AR-GE projeleri, açık kaynak katkılar..."
               rows={4} value={form.projects}

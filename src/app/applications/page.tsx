@@ -1,0 +1,273 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+type Application = {
+  id: string;
+  company_name: string;
+  department: string | null;
+  result: string;
+  interview_note: string | null;
+  experience_note: string | null;
+  applied_at: string;
+  salary: number | null;
+  rating: number | null;
+};
+
+type FormState = {
+  company_name: string;
+  department: string;
+  result: string;
+  interview_note: string;
+  experience_note: string;
+  applied_at: string;
+  salary: string;
+  rating: number | null;
+};
+
+const RESULT_STYLE: Record<string, { label: string; cls: string }> = {
+  beklemede:           { label: "Beklemede",         cls: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+  mulakat_bekleniyor:  { label: "Mülakat Bekleniyor", cls: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30" },
+  olumlu:              { label: "Olumlu",             cls: "bg-green-500/15 text-green-400 border-green-500/30" },
+  ret:                 { label: "Ret",                cls: "bg-red-500/15 text-red-400 border-red-500/30" },
+};
+
+const EMPTY_FORM: FormState = {
+  company_name: "", department: "", result: "beklemede",
+  interview_note: "", experience_note: "",
+  applied_at: new Date().toISOString().split("T")[0],
+  salary: "", rating: null,
+};
+
+const INPUT_CLASS = "w-full bg-slate-800/50 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-all";
+const SELECT_CLASS = "w-full bg-slate-800/50 border border-slate-700/50 text-slate-100 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-all appearance-none";
+const TEXTAREA_CLASS = "w-full bg-slate-800/50 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-all resize-none";
+const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-1.5";
+const NAV_LINK = "text-slate-400 hover:text-cyan-400 transition-colors text-sm";
+const NAV_ACTIVE = "text-cyan-400 text-sm font-medium";
+
+export default function ApplicationsPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/"); return; }
+      setUserId(user.id);
+      const { data } = await supabase.from("applications").select("*").eq("user_id", user.id).order("applied_at", { ascending: false });
+      setApplications(data ?? []);
+      setLoading(false);
+    }
+    loadData();
+  }, [router]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!userId) return;
+    setSaving(true);
+    const supabase = createClient();
+    const payload = {
+      company_name: form.company_name,
+      department: form.department || null,
+      result: form.result,
+      interview_note: form.interview_note || null,
+      experience_note: form.experience_note || null,
+      applied_at: form.applied_at,
+      salary: form.salary ? parseInt(form.salary) : null,
+      rating: form.rating,
+    };
+    if (editingId) {
+      const { error } = await supabase.from("applications").update({ ...payload, updated_at: new Date().toISOString() }).eq("id", editingId);
+      if (error) toast.error("Güncellenemedi.");
+      else { toast.success("Başvuru güncellendi!"); setApplications((p) => p.map((a) => a.id === editingId ? { ...a, ...payload } : a)); }
+    } else {
+      const { data, error } = await supabase.from("applications").insert({ ...payload, user_id: userId }).select().single();
+      if (error) toast.error("Eklenemedi.");
+      else { toast.success("Başvuru eklendi!"); setApplications((p) => [data, ...p]); }
+    }
+    setForm(EMPTY_FORM); setEditingId(null); setShowForm(false); setSaving(false);
+  }
+
+  function handleEdit(app: Application) {
+    setForm({ company_name: app.company_name, department: app.department ?? "", result: app.result, interview_note: app.interview_note ?? "", experience_note: app.experience_note ?? "", applied_at: app.applied_at, salary: app.salary?.toString() ?? "", rating: app.rating });
+    setEditingId(app.id); setShowForm(true);
+  }
+
+  async function handleDelete(id: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from("applications").delete().eq("id", id);
+    if (error) toast.error("Silinemedi.");
+    else { setApplications((p) => p.filter((a) => a.id !== id)); toast.success("Silindi."); }
+  }
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#020917] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#020917] space-grid">
+      <header className="border-b border-slate-800/50 bg-[#020917]/80 backdrop-blur-xl sticky top-0 z-10">
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+          <span className="font-bold text-slate-100">
+            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">UUBF</span>{" "}Staj Takip
+          </span>
+          <nav className="flex items-center gap-5">
+            <Link href="/profile" className={NAV_LINK}>Profilim</Link>
+            <Link href="/applications" className={NAV_ACTIVE}>Başvurularım</Link>
+            <Link href="/analytics" className={NAV_LINK}>Analitik</Link>
+            <button onClick={handleSignOut} className="text-sm text-slate-500 hover:text-red-400 transition-colors">Çıkış</button>
+          </nav>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-slate-100">Başvurularım</h2>
+            <p className="text-slate-500 mt-0.5 text-sm">{applications.length} başvuru</p>
+          </div>
+          <button
+            onClick={() => { setForm(EMPTY_FORM); setEditingId(null); setShowForm(true); }}
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-lg px-5 py-2.5 text-sm transition-all shadow-lg shadow-cyan-500/20"
+          >
+            + Başvuru Ekle
+          </button>
+        </div>
+
+        {showForm && (
+          <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6">
+            <h3 className="text-base font-semibold text-slate-100 mb-5 flex items-center gap-2">
+              <span className="w-1 h-4 bg-gradient-to-b from-cyan-400 to-blue-500 rounded-full" />
+              {editingId ? "Başvuruyu Düzenle" : "Yeni Başvuru"}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={LABEL_CLASS}>Şirket Adı *</label>
+                  <input placeholder="Baykar, TAI, TUSAŞ..." value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} required className={INPUT_CLASS} />
+                </div>
+                <div>
+                  <label className={LABEL_CLASS}>Birim / Departman</label>
+                  <input placeholder="Uçuş Yazılımları, Aerodinamik..." value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className={INPUT_CLASS} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={LABEL_CLASS}>Sonuç</label>
+                  <select value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value })} className={SELECT_CLASS}>
+                    <option value="beklemede">Beklemede</option>
+                    <option value="mulakat_bekleniyor">Mülakat Bekleniyor</option>
+                    <option value="olumlu">Olumlu</option>
+                    <option value="ret">Ret</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={LABEL_CLASS}>Başvuru Tarihi</label>
+                  <input type="date" value={form.applied_at} onChange={(e) => setForm({ ...form, applied_at: e.target.value })} className={INPUT_CLASS} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={LABEL_CLASS}>Aylık Ücret <span className="text-slate-500 text-xs">(TL, opsiyonel)</span></label>
+                  <input type="number" min="0" placeholder="15000" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} className={INPUT_CLASS} />
+                </div>
+                <div>
+                  <label className={LABEL_CLASS}>Genel Değerlendirme <span className="text-slate-500 text-xs">(opsiyonel)</span></label>
+                  <div className="flex gap-2 mt-1">
+                    {[1,2,3,4,5].map((n) => (
+                      <button key={n} type="button" onClick={() => setForm({ ...form, rating: form.rating === n ? null : n })}
+                        className={`w-9 h-9 rounded-lg text-sm font-bold border transition-all ${
+                          form.rating !== null && n <= form.rating
+                            ? "bg-amber-500/30 text-amber-300 border-amber-500/50"
+                            : "bg-slate-800/50 text-slate-500 border-slate-700/50 hover:border-slate-500/50"
+                        }`}
+                      >{n}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className={LABEL_CLASS}>Mülakat Notu</label>
+                <textarea placeholder="Mülakat süreci, sorulan sorular..." rows={2} value={form.interview_note} onChange={(e) => setForm({ ...form, interview_note: e.target.value })} className={TEXTAREA_CLASS} />
+              </div>
+              <div>
+                <label className={LABEL_CLASS}>Staj Deneyimi</label>
+                <textarea placeholder="Staj boyunca neler yaptın, neler öğrendin..." rows={3} value={form.experience_note} onChange={(e) => setForm({ ...form, experience_note: e.target.value })} className={TEXTAREA_CLASS} />
+              </div>
+              <div className="flex gap-3">
+                <button type="submit" disabled={saving} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 text-white font-medium rounded-lg px-5 py-2 text-sm transition-all">
+                  {saving ? "Kaydediliyor..." : editingId ? "Güncelle" : "Ekle"}
+                </button>
+                <button type="button" onClick={() => { setShowForm(false); setEditingId(null); setForm(EMPTY_FORM); }} className="px-5 py-2 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-300 rounded-lg text-sm transition-all">
+                  İptal
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {applications.length === 0 ? (
+            <div className="bg-slate-900/40 border border-slate-800/50 rounded-2xl py-16 text-center text-slate-500">
+              Henüz başvuru eklemedin. Yukarıdan ekleyebilirsin.
+            </div>
+          ) : (
+            applications.map((app) => {
+              const r = RESULT_STYLE[app.result] ?? RESULT_STYLE.beklemede;
+              return (
+                <div key={app.id} className="bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-xl p-5 hover:border-slate-600/50 transition-all">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-2 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-slate-100">{app.company_name}</span>
+                        {app.department && <span className="text-slate-500 text-sm">— {app.department}</span>}
+                        <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium border ${r.cls}`}>{r.label}</span>
+                      </div>
+                        <div className="flex items-center gap-3 text-xs text-slate-600">
+                          <span>{app.applied_at}</span>
+                          {app.salary && <span className="text-amber-400/70">{app.salary.toLocaleString("tr-TR")} TL/ay</span>}
+                          {app.rating && <span className="text-amber-400">{"★".repeat(app.rating)}{"☆".repeat(5 - app.rating)}</span>}
+                        </div>
+                      {app.interview_note && (
+                        <p className="text-sm text-slate-400"><span className="text-slate-300 font-medium">Mülakat:</span> {app.interview_note}</p>
+                      )}
+                      {app.experience_note && (
+                        <p className="text-sm text-slate-400"><span className="text-slate-300 font-medium">Deneyim:</span> {app.experience_note}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => handleEdit(app)} className="px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 text-slate-300 rounded-lg text-xs transition-all">Düzenle</button>
+                      <button onClick={() => handleDelete(app.id)} className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-xs transition-all">Sil</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

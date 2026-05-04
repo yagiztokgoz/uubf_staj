@@ -33,3 +33,19 @@ join public.profiles as p
   on p.id = a.user_id;
 
 grant select on public.analytics_applications_anonymous to anon, authenticated;
+
+create or replace view public.analytics_comments_authenticated as
+select
+  a.id,
+  a.company_name,
+  a.department as application_department,
+  a.result,
+  a.salary,
+  a.rating,
+  a.interview_note,
+  a.experience_note
+from public.applications as a
+where a.interview_note is not null
+   or a.experience_note is not null;
+
+grant select on public.analytics_comments_authenticated to authenticated;

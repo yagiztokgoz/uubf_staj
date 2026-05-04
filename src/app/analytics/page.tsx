@@ -24,6 +24,17 @@ type ApplicationRow = {
   gender: string | null;
 };
 
+type CommentRow = {
+  id: string;
+  company_name: string;
+  application_department: string | null;
+  result: string;
+  salary: number | null;
+  rating: number | null;
+  interview_note: string | null;
+  experience_note: string | null;
+};
+
 const NEON: Record<string, string> = {
   olumlu: "#4ade80", ret: "#f87171",
   mulakat_bekleniyor: "#22d3ee", beklemede: "#fbbf24",
@@ -62,6 +73,7 @@ function StatCard({ label, value, sub, color = "text-slate-100" }: { label: stri
 
 export default function AnalyticsPage() {
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
+  const [comments, setComments] = useState<CommentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [companyFilter, setCompanyFilter] = useState("tümü");
@@ -77,6 +89,14 @@ export default function AnalyticsPage() {
         .from("analytics_applications_anonymous")
         .select("company_name, application_department, result, found_with_referral, salary, rating, gpa, interests, profile_department, class_year, minor_department, gender");
       setApplications((data as unknown as ApplicationRow[]) ?? []);
+
+      if (user) {
+        const { data: commentsData } = await supabase
+          .from("analytics_comments_authenticated")
+          .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note");
+        setComments((commentsData as unknown as CommentRow[]) ?? []);
+      }
+
       setLoading(false);
     }
     loadData();
@@ -97,6 +117,17 @@ export default function AnalyticsPage() {
         : a.result === resultFilter);
     return mc && md && mr;
   }), [applications, companyFilter, departmentFilter, resultFilter]);
+
+  const filteredComments = useMemo(() => comments.filter((comment) => {
+    const mc = companyFilter === "tümü" || comment.company_name === companyFilter;
+    const md = departmentFilter === "tümü" || comment.application_department === departmentFilter;
+    const mr =
+      resultFilter === "tümü" ||
+      (resultFilter === "olumlu"
+        ? ACCEPTED_RESULTS.has(comment.result)
+        : comment.result === resultFilter);
+    return mc && md && mr;
+  }), [comments, companyFilter, departmentFilter, resultFilter]);
 
   // — Özet —
   const total = filtered.length;
@@ -242,7 +273,11 @@ export default function AnalyticsPage() {
         <div>
           <h2 className="text-2xl font-bold text-slate-100">Staj Analitikleri</h2>
           <p className="text-slate-500 mt-1 text-sm">Tüm öğrencilerin anonim staj verileri</p>
-          <p className="text-slate-600 mt-1 text-xs">Gizlilik için yorumlar ve kimlik bilgileri herkese açık analitikte gösterilmez.</p>
+          <p className="text-slate-600 mt-1 text-xs">
+            {loggedIn
+              ? "Yorumlar sadece giriş yapan kullanıcılara gösterilir, kimlik bilgileri yine gizli tutulur."
+              : "Yorumlar sadece giriş yapan kullanıcılara gösterilir, kimlik bilgileri herkese açık analitikte gösterilmez."}
+          </p>
         </div>
 
         {/* Filtreler */}
@@ -576,6 +611,57 @@ export default function AnalyticsPage() {
                 </div>
               </TabsContent>
             </Tabs>
+
+            {loggedIn && filteredComments.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full" />
+                  Staj Yorumları
+                  <span className="text-sm font-normal text-slate-500">({filteredComments.length})</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredComments.slice(0, 20).map((comment) => {
+                    const resultClass = {
+                      olumlu: "text-green-400 border-green-500/30 bg-green-500/10",
+                      staji_bitirdim: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10",
+                      ret: "text-red-400 border-red-500/30 bg-red-500/10",
+                      mulakat_bekleniyor: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
+                      beklemede: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+                    }[comment.result] ?? "";
+
+                    return (
+                      <div key={comment.id} className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-5 space-y-3">
+                        <div className="flex items-center gap-2 justify-between">
+                          <div>
+                            <span className="font-semibold text-slate-100 text-sm">{comment.company_name}</span>
+                            {comment.application_department && (
+                              <span className="text-slate-500 text-xs ml-2">— {comment.application_department}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {comment.rating && <span className="text-amber-400 text-xs">{"★".repeat(comment.rating)}</span>}
+                            {comment.salary && <span className="text-orange-400/70 text-xs">{comment.salary.toLocaleString("tr-TR")} ₺</span>}
+                            <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${resultClass}`}>{RESULT_LABELS[comment.result]}</span>
+                          </div>
+                        </div>
+                        {comment.interview_note && (
+                          <div>
+                            <p className="text-xs text-slate-500 mb-1 font-medium uppercase tracking-wider">Mülakat</p>
+                            <p className="text-sm text-slate-300 leading-relaxed">{comment.interview_note}</p>
+                          </div>
+                        )}
+                        {comment.experience_note && (
+                          <div>
+                            <p className="text-xs text-slate-500 mb-1 font-medium uppercase tracking-wider">Deneyim</p>
+                            <p className="text-sm text-slate-300 leading-relaxed">{comment.experience_note}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
           </>
         )}

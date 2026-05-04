@@ -338,7 +338,7 @@ export default function AnalyticsPage() {
                       <BarChart data={salaryByCompany} layout="vertical" margin={{ left: 10, right: 60 }}>
                         <XAxis type="number" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}K`} />
                         <YAxis type="category" dataKey="company" width={150} tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                        <Tooltip {...TT} formatter={(v: number | undefined) => [v != null ? `${v.toLocaleString("tr-TR")} ₺` : "—", "Ort. Maaş"]} />
+                        <Tooltip {...TT} formatter={(v) => [typeof v === "number" ? `${v.toLocaleString("tr-TR")} ₺` : "—", "Ort. Maaş"]} />
                         <Bar dataKey="avg" name="Ort. Maaş" fill={NEON.salary} radius={[0,4,4,0]} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -401,7 +401,7 @@ export default function AnalyticsPage() {
                         <BarChart data={genderAccept}>
                           <XAxis dataKey="gender" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 12 }} />
                           <YAxis domain={[0, 100]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                          <Tooltip {...TT} formatter={(v: number | undefined) => [`%${v ?? 0}`, "Kabul Oranı"]} />
+                          <Tooltip {...TT} formatter={(v) => [`%${typeof v === "number" ? v : 0}`, "Kabul Oranı"]} />
                           <Bar dataKey="rate" name="Kabul Oranı" radius={[4,4,0,0]}>
                             {genderAccept.map((e) => <Cell key={e.gender} fill={e.gender === "Erkek" ? NEON.erkek : NEON.kadın} />)}
                           </Bar>
@@ -454,7 +454,7 @@ export default function AnalyticsPage() {
                         <BarChart data={gpaBuckets}>
                           <XAxis dataKey="label" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 9 }} />
                           <YAxis domain={[0, 100]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                          <Tooltip {...TT} formatter={(v: number | undefined) => [`%${v ?? 0}`, "Kabul Oranı"]} />
+                          <Tooltip {...TT} formatter={(v) => [`%${typeof v === "number" ? v : 0}`, "Kabul Oranı"]} />
                           <Bar dataKey="rate" name="Kabul Oranı" radius={[4,4,0,0]}>
                             {gpaBuckets.map((b, i) => <Cell key={i} fill={`hsl(${120 * (b.rate / 100)}, 80%, 55%)`} />)}
                           </Bar>

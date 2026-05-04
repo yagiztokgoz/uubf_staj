@@ -60,14 +60,40 @@ export default function AuthConfirmPage({ searchParams }: AuthConfirmPageProps) 
     ? resolvedSearchParams.type[0]
     : resolvedSearchParams.type;
   const [failed, setFailed] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+  const hasTokenLink = Boolean(tokenHash);
+  const nextPath = resolveRedirectPath(
+    next ?? redirectTo,
+    typeof window === "undefined" ? "http://localhost" : window.location.origin
+  );
+
+  async function handleVerify() {
+    if (!tokenHash || verifying) {
+      return;
+    }
+
+    setVerifying(true);
+    setVerificationError(null);
+
+    const supabase = createClient();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: (otpType ?? "email") as EmailOtpType,
+    });
+
+    if (verifyError) {
+      setVerificationError(verifyError.message);
+      setFailed(true);
+      setVerifying(false);
+      return;
+    }
+
+    router.replace(nextPath);
+  }
 
   useEffect(() => {
     const supabase = createClient();
-    const nextPath = resolveRedirectPath(
-      next ?? redirectTo,
-      window.location.origin
-    );
     let active = true;
 
     if (error) {
@@ -76,26 +102,7 @@ export default function AuthConfirmPage({ searchParams }: AuthConfirmPageProps) 
       };
     }
 
-    if (tokenHash) {
-      supabase.auth
-        .verifyOtp({
-          token_hash: tokenHash,
-          type: (otpType ?? "email") as EmailOtpType,
-        })
-        .then(({ error: verifyError }) => {
-          if (!active) {
-            return;
-          }
-
-          if (verifyError) {
-            setVerificationError(verifyError.message);
-            setFailed(true);
-            return;
-          }
-
-          router.replace(nextPath);
-        });
-
+    if (hasTokenLink) {
       return () => {
         active = false;
       };
@@ -125,12 +132,14 @@ export default function AuthConfirmPage({ searchParams }: AuthConfirmPageProps) 
       active = false;
       subscription.unsubscribe();
     };
-  }, [error, next, otpType, redirectTo, router, tokenHash]);
+  }, [error, hasTokenLink, nextPath, router]);
 
   const message = error
     ? error
     : verificationError
       ? verificationError
+    : hasTokenLink
+      ? "Giriş linkin hazır. Güvenlik için aşağıdaki butona tıklayarak girişi tamamla."
     : failed
       ? "Giriş bağlantısı bulunamadı. Lütfen yeni bir magic link iste."
       : "Giriş yapılıyor...";
@@ -139,6 +148,16 @@ export default function AuthConfirmPage({ searchParams }: AuthConfirmPageProps) 
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="text-center space-y-4">
         <p className="text-slate-500">{message}</p>
+        {hasTokenLink && !verificationError ? (
+          <button
+            type="button"
+            onClick={handleVerify}
+            disabled={verifying}
+            className="inline-flex rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100 transition-colors hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {verifying ? "Doğrulanıyor..." : "Girişi tamamla"}
+          </button>
+        ) : null}
         {error || failed ? (
           <Link
             href="/"

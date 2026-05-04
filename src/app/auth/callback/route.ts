@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
 function resolveRedirectPath(rawTarget: string | null, origin: string) {
@@ -38,23 +37,18 @@ export async function GET(request: NextRequest) {
   const nextPath = resolveRedirectPath(redirectTarget, requestUrl.origin);
   let authErrorMessage: string | null = null;
 
+  if (tokenHash) {
+    const confirmUrl = new URL("/auth/confirm", requestUrl.origin);
+    confirmUrl.searchParams.set("token_hash", tokenHash);
+    confirmUrl.searchParams.set("type", type);
+    confirmUrl.searchParams.set("next", nextPath);
+
+    return NextResponse.redirect(confirmUrl);
+  }
+
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-    if (!error) {
-      return NextResponse.redirect(new URL(nextPath, requestUrl.origin));
-    }
-
-    authErrorMessage = error.message;
-  }
-
-  if (tokenHash) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: type as EmailOtpType,
-    });
 
     if (!error) {
       return NextResponse.redirect(new URL(nextPath, requestUrl.origin));

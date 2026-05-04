@@ -9,19 +9,19 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "İTU UUBF'deki staj çileni paylaş, analitikleri görüntüle",
-  description: "Havacılık ve uzay mühendisliği staj deneyimlerini paylaş, analitikleri görüntüle",
+  title: "İTU UUBF Staj Takip Portalı",
+  description: "İTU UUBF'deki staj çileni paylaş, analitikleri görüntüle",
   openGraph: {
-    title: "İTU UUBF'deki staj çileni paylaş, analitikleri görüntüle",
-    description: "Havacılık ve uzay mühendisliği staj deneyimlerini paylaş, analitikleri görüntüle",
+    title: "İTU UUBF Staj Takip Portalı",
+    description: "İTU UUBF'deki staj çileni paylaş, analitikleri görüntüle",
     url: "https://uubf-staj.vercel.app",
     siteName: "UUBF Staj Takip",
     locale: "tr_TR",
     type: "website",
   },
   twitter: {
-    title: "İTU UUBF'deki staj çileni paylaş, analitikleri görüntüle",
-    description: "Havacılık ve uzay mühendisliği staj deneyimlerini paylaş, analitikleri görüntüle",
+    title: "İTU UUBF Staj Takip Portalı",
+    description: "İTU UUBF'deki staj çileni paylaş, analitikleri görüntüle",
     card: "summary_large_image",
   },
 };

@@ -55,6 +55,9 @@ export default function LoginPage() {
               <p className="text-sm text-slate-400">
                 <span className="text-cyan-400">{email}</span> adresine giriş linki gönderdik.
               </p>
+              <p className="text-sm text-slate-400">
+                Mail 5 dakika içinde gelecektir. Spam kutuna bakmayı unutma.
+              </p>
               <button
                 onClick={() => setSent(false)}
                 className="text-sm text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-4 mt-2"

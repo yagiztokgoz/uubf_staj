@@ -9,8 +9,21 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "UUBF Staj Takip",
+  title: "İTU UUBF'deki staj çileni paylaş, analitikleri görüntüle",
   description: "Havacılık ve uzay mühendisliği staj deneyimlerini paylaş, analitikleri görüntüle",
+  openGraph: {
+    title: "İTU UUBF'deki staj çileni paylaş, analitikleri görüntüle",
+    description: "Havacılık ve uzay mühendisliği staj deneyimlerini paylaş, analitikleri görüntüle",
+    url: "https://uubf-staj.vercel.app",
+    siteName: "UUBF Staj Takip",
+    locale: "tr_TR",
+    type: "website",
+  },
+  twitter: {
+    title: "İTU UUBF'deki staj çileni paylaş, analitikleri görüntüle",
+    description: "Havacılık ve uzay mühendisliği staj deneyimlerini paylaş, analitikleri görüntüle",
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

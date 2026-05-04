@@ -4,6 +4,10 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
+function isItuEmail(value: string) {
+  return /^[^\s@]+@itu\.edu\.tr$/i.test(value.trim());
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -12,11 +16,19 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    const normalizedEmail = email.trim().toLowerCase();
+
     setError("");
+    if (!isItuEmail(normalizedEmail)) {
+      setError("Sadece @itu.edu.tr uzantılı e-posta adresleriyle giriş yapabilirsin.");
+      return;
+    }
+
+    setLoading(true);
+    setEmail(normalizedEmail);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: normalizedEmail,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) setError(error.message);
@@ -77,6 +89,11 @@ export default function LoginPage() {
                   placeholder="cemilhoca@itu.edu.tr"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  pattern=".+@itu\.edu\.tr"
+                  title="Lutfen @itu.edu.tr uzantili bir e-posta adresi gir."
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   required
                   className="w-full bg-slate-800/50 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-all"
                 />

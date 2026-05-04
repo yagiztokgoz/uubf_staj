@@ -5,29 +5,23 @@ import { createClient } from "@/lib/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis,
+  PieChart, Pie, Legend,
 } from "recharts";
 import Link from "next/link";
 
 type ApplicationRow = {
-  id: string;
   company_name: string;
-  department: string | null;
+  application_department: string | null;
   result: string;
   found_with_referral: boolean | null;
-  interview_note: string | null;
-  experience_note: string | null;
   salary: number | null;
   rating: number | null;
-  profiles: {
-    gpa: number | null;
-    interests: string[] | null;
-    thesis_topic: string | null;
-    department: string | null;
-    class_year: string | null;
-    minor_department: string | null;
-    gender: string | null;
-  } | null;
+  gpa: number | null;
+  interests: string[] | null;
+  profile_department: string | null;
+  class_year: string | null;
+  minor_department: string | null;
+  gender: string | null;
 };
 
 const NEON: Record<string, string> = {
@@ -80,8 +74,8 @@ export default function AnalyticsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       setLoggedIn(!!user);
       const { data } = await supabase
-        .from("applications")
-        .select("id, company_name, department, result, found_with_referral, interview_note, experience_note, salary, rating, profiles(gpa, interests, thesis_topic, department, class_year, minor_department, gender)");
+        .from("analytics_applications_anonymous")
+        .select("company_name, application_department, result, found_with_referral, salary, rating, gpa, interests, profile_department, class_year, minor_department, gender");
       setApplications((data as unknown as ApplicationRow[]) ?? []);
       setLoading(false);
     }
@@ -90,12 +84,12 @@ export default function AnalyticsPage() {
 
   const uniqueCompanies = useMemo(() => [...new Set(applications.map((a) => a.company_name))].sort(), [applications]);
   const uniqueDepts = useMemo(() =>
-    [...new Set(applications.filter((a) => companyFilter === "tümü" || a.company_name === companyFilter).map((a) => a.department).filter((d): d is string => !!d))].sort(),
+    [...new Set(applications.filter((a) => companyFilter === "tümü" || a.company_name === companyFilter).map((a) => a.application_department).filter((d): d is string => !!d))].sort(),
     [applications, companyFilter]);
 
   const filtered = useMemo(() => applications.filter((a) => {
     const mc = companyFilter === "tümü" || a.company_name === companyFilter;
-    const md = departmentFilter === "tümü" || a.department === departmentFilter;
+    const md = departmentFilter === "tümü" || a.application_department === departmentFilter;
     const mr =
       resultFilter === "tümü" ||
       (resultFilter === "olumlu"
@@ -108,7 +102,7 @@ export default function AnalyticsPage() {
   const total = filtered.length;
   const accepted = filtered.filter((a) => ACCEPTED_RESULTS.has(a.result)).length;
   const acceptRate = total > 0 ? ((accepted / total) * 100).toFixed(1) : "0";
-  const acceptedGPAs = filtered.filter((a) => ACCEPTED_RESULTS.has(a.result) && a.profiles?.gpa != null).map((a) => a.profiles!.gpa!);
+  const acceptedGPAs = filtered.filter((a) => ACCEPTED_RESULTS.has(a.result) && a.gpa != null).map((a) => a.gpa!);
   const avgGPA = acceptedGPAs.length > 0 ? (acceptedGPAs.reduce((s, g) => s + g, 0) / acceptedGPAs.length).toFixed(2) : "—";
   const salaries = filtered.filter((a) => a.salary != null && a.salary > 0).map((a) => a.salary!);
   const avgSalary = salaries.length > 0 ? Math.round(salaries.reduce((s, v) => s + v, 0) / salaries.length).toLocaleString("tr-TR") : "—";
@@ -171,21 +165,21 @@ export default function AnalyticsPage() {
 
   // — Demografik —
   const genderCounts = filtered.reduce((acc, a) => {
-    const g = a.profiles?.gender ?? "belirtilmemiş";
+    const g = a.gender ?? "belirtilmemiş";
     acc[g] = (acc[g] ?? 0) + 1; return acc;
   }, {} as Record<string, number>);
   const genderDist = Object.entries(genderCounts).map(([g, v]) => ({ name: g === "erkek" ? "Erkek" : g === "kadın" ? "Kadın" : g === "belirtmek istemiyorum" ? "Belirtmek İstemiyorum" : "Belirtilmemiş", value: v, key: g }));
 
   // Cinsiyet bazında kabul oranı
   const genderAccept = ["erkek", "kadın"].map((g) => {
-    const apps = filtered.filter((a) => a.profiles?.gender === g);
+    const apps = filtered.filter((a) => a.gender === g);
     const acc = apps.filter((a) => ACCEPTED_RESULTS.has(a.result)).length;
     return { gender: g === "erkek" ? "Erkek" : "Kadın", total: apps.length, accepted: acc, rate: apps.length > 0 ? parseFloat(((acc / apps.length) * 100).toFixed(1)) : 0 };
   }).filter((d) => d.total > 0);
 
   // Bölüm bazında
   const deptStats = ["Uçak Mühendisliği", "Uzay Mühendisliği"].map((dept) => {
-    const apps = filtered.filter((a) => a.profiles?.department === dept);
+    const apps = filtered.filter((a) => a.profile_department === dept);
     const acc = apps.filter((a) => ACCEPTED_RESULTS.has(a.result)).length;
     return { dept: dept.replace(" Mühendisliği", ""), total: apps.length, accepted: acc, rate: apps.length > 0 ? parseFloat(((acc / apps.length) * 100).toFixed(1)) : 0 };
   }).filter((d) => d.total > 0);
@@ -193,7 +187,7 @@ export default function AnalyticsPage() {
   // Sınıf bazında
   const classStats = Object.entries(
     filtered.reduce((acc, a) => {
-      const c = a.profiles?.class_year ?? "Belirtilmemiş";
+      const c = a.class_year ?? "Belirtilmemiş";
       if (!acc[c]) acc[c] = { total: 0, accepted: 0 };
       acc[c].total++; if (ACCEPTED_RESULTS.has(a.result)) acc[c].accepted++;
       return acc;
@@ -210,28 +204,25 @@ export default function AnalyticsPage() {
     { label: "3.50–3.75", min: 3.5, max: 3.75 },
     { label: "3.75–4.00", min: 3.75, max: 4.01 },
   ].map(({ label, min, max }) => {
-    const apps = filtered.filter((a) => a.profiles?.gpa != null && a.profiles.gpa >= min && a.profiles.gpa < max);
+    const apps = filtered.filter((a) => a.gpa != null && a.gpa >= min && a.gpa < max);
     const acc = apps.filter((a) => ACCEPTED_RESULTS.has(a.result)).length;
     return { label, total: apps.length, accepted: acc, rate: apps.length > 0 ? parseFloat(((acc / apps.length) * 100).toFixed(1)) : 0 };
   }).filter((b) => b.total > 0);
 
   // İlgi alanları
   const interestCounts: Record<string, number> = {};
-  filtered.forEach((a) => a.profiles?.interests?.forEach((i) => { interestCounts[i] = (interestCounts[i] ?? 0) + 1; }));
+  filtered.forEach((a) => a.interests?.forEach((i) => { interestCounts[i] = (interestCounts[i] ?? 0) + 1; }));
   const interestData = Object.entries(interestCounts).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([interest, count]) => ({ interest, count }));
 
   const acceptedInterestCounts: Record<string, number> = {};
-  filtered.filter((a) => ACCEPTED_RESULTS.has(a.result)).forEach((a) => a.profiles?.interests?.forEach((i) => { acceptedInterestCounts[i] = (acceptedInterestCounts[i] ?? 0) + 1; }));
+  filtered.filter((a) => ACCEPTED_RESULTS.has(a.result)).forEach((a) => a.interests?.forEach((i) => { acceptedInterestCounts[i] = (acceptedInterestCounts[i] ?? 0) + 1; }));
   const acceptedInterestData = Object.entries(acceptedInterestCounts).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([interest, count]) => ({ interest, count }));
 
   // Çap / Yandal
   const minorCounts: Record<string, number> = {};
-  filtered.forEach((a) => { const m = a.profiles?.minor_department; if (m) minorCounts[m] = (minorCounts[m] ?? 0) + 1; });
+  filtered.forEach((a) => { const m = a.minor_department; if (m) minorCounts[m] = (minorCounts[m] ?? 0) + 1; });
   const minorData = Object.entries(minorCounts).sort((a, b) => b[1] - a[1]).map(([minor, count]) => ({ minor, count }));
-  const withMinor = filtered.filter((a) => a.profiles?.minor_department).length;
-
-  // Yorumlar
-  const comments = filtered.filter((a) => a.experience_note || a.interview_note);
+  const withMinor = filtered.filter((a) => a.minor_department).length;
 
   return (
     <div className="min-h-screen bg-[#020917] space-grid">
@@ -251,6 +242,7 @@ export default function AnalyticsPage() {
         <div>
           <h2 className="text-2xl font-bold text-slate-100">Staj Analitikleri</h2>
           <p className="text-slate-500 mt-1 text-sm">Tüm öğrencilerin anonim staj verileri</p>
+          <p className="text-slate-600 mt-1 text-xs">Gizlilik için yorumlar ve kimlik bilgileri herkese açık analitikte gösterilmez.</p>
         </div>
 
         {/* Filtreler */}
@@ -585,38 +577,6 @@ export default function AnalyticsPage() {
               </TabsContent>
             </Tabs>
 
-            {/* Yorumlar */}
-            {comments.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-gradient-to-b from-amber-400 to-orange-500 rounded-full" />
-                  Staj Yorumları
-                  <span className="text-sm font-normal text-slate-500">({comments.length})</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {comments.slice(0, 20).map((a) => {
-                    const rc = { olumlu: "text-green-400 border-green-500/30 bg-green-500/10", staji_bitirdim: "text-emerald-300 border-emerald-500/30 bg-emerald-500/10", ret: "text-red-400 border-red-500/30 bg-red-500/10", mulakat_bekleniyor: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10", beklemede: "text-amber-400 border-amber-500/30 bg-amber-500/10" }[a.result] ?? "";
-                    return (
-                      <div key={a.id} className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-5 space-y-3">
-                        <div className="flex items-center gap-2 justify-between">
-                          <div>
-                            <span className="font-semibold text-slate-100 text-sm">{a.company_name}</span>
-                            {a.department && <span className="text-slate-500 text-xs ml-2">— {a.department}</span>}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {a.rating && <span className="text-amber-400 text-xs">{"★".repeat(a.rating)}</span>}
-                            {a.salary && <span className="text-orange-400/70 text-xs">{a.salary.toLocaleString("tr-TR")} ₺</span>}
-                            <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${rc}`}>{RESULT_LABELS[a.result]}</span>
-                          </div>
-                        </div>
-                        {a.interview_note && <div><p className="text-xs text-slate-500 mb-1 font-medium uppercase tracking-wider">Mülakat</p><p className="text-sm text-slate-300 leading-relaxed">{a.interview_note}</p></div>}
-                        {a.experience_note && <div><p className="text-xs text-slate-500 mb-1 font-medium uppercase tracking-wider">Deneyim</p><p className="text-sm text-slate-300 leading-relaxed">{a.experience_note}</p></div>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </>
         )}
       </main>

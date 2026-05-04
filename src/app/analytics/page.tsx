@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { SiteLogo } from "@/components/site-logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
@@ -286,7 +285,9 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-[#020917] space-grid">
       <header className="border-b border-slate-800/50 bg-[#020917]/80 backdrop-blur-xl sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <SiteLogo />
+          <span className="font-bold text-slate-100">
+            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">UUBF</span>{" "}Staj Takip
+          </span>
           <nav className="flex items-center gap-5">
             {loggedIn ? (<><Link href="/profile" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Profilim</Link><Link href="/applications" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Başvurularım</Link></>) : (<Link href="/" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Giriş Yap</Link>)}
             <Link href="/analytics" className="text-cyan-400 text-sm font-medium">Analitik</Link>

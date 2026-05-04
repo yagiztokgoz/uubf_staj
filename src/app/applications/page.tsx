@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { SiteLogo } from "@/components/site-logo";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -294,7 +293,9 @@ export default function ApplicationsPage() {
     <div className="min-h-screen bg-[#020917] space-grid">
       <header className="border-b border-slate-800/50 bg-[#020917]/80 backdrop-blur-xl sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <SiteLogo />
+          <span className="font-bold text-slate-100">
+            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">UUBF</span>{" "}Staj Takip
+          </span>
           <nav className="flex items-center gap-5">
             <Link href="/profile" className={NAV_LINK}>Profilim</Link>
             <Link href="/applications" className={NAV_ACTIVE}>Başvurularım</Link>

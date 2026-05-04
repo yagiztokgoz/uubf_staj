@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { SiteLogo } from "@/components/site-logo";
 import Link from "next/link";
 
 function isItuEmail(value: string) {
@@ -46,9 +45,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8 relative z-10">
         {/* Logo / Title */}
         <div className="text-center space-y-3">
-          <div className="flex justify-center">
-            <SiteLogo variant="hero" />
-          </div>
+          <h1 className="text-4xl font-bold tracking-tight">
+            <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent glow-text">
+              UUBF
+            </span>
+            <span className="text-slate-100"> Staj Takip</span>
+          </h1>
           <p className="text-slate-400 text-base">
             Staj deneyimlerini paylaş, veriden ilham al
           </p>

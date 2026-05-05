@@ -56,6 +56,22 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* Bilgilendirme */}
+        <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl px-5 py-4 space-y-2.5 text-sm text-slate-400">
+          <div className="flex items-start gap-2.5">
+            <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
+            <span>İTÜ mail adresinizi yazın, gelen kutuya giriş linki gönderelim. Hesap oluşturmanıza gerek yok.</span>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
+            <span>Yalnızca <span className="text-slate-300 font-medium">@itu.edu.tr</span> uzantılı adreslerle giriş yapılabilir.</span>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
+            <span>Sistemde yalnızca girdiğiniz İTÜ mail adresi tutulmaktadır. Tüm staj verileri anonimleştirilmiş olarak saklanır.</span>
+          </div>
+        </div>
+
         {/* Card */}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 glow-cyan">
           {sent ? (

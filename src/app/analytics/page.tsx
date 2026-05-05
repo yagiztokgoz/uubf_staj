@@ -304,6 +304,46 @@ export default function AnalyticsPage() {
   const minorData = Object.entries(minorCounts).sort((a, b) => b[1] - a[1]).map(([minor, count]) => ({ minor, count }));
   const withMinor = filtered.filter((a) => a.minor_department).length;
 
+  // — Dönem Trendi —
+  const SEASON_ORDER_A: Record<string, number> = { Bahar: 0, Yaz: 1, Güz: 2 };
+  const periodTrend = useMemo(() => {
+    const byPeriod: Record<string, { total: number; accepted: number; salaries: number[]; ratings: number[] }> = {};
+    filtered.forEach((a) => {
+      const p = a.period ?? "Belirtilmemiş";
+      if (!byPeriod[p]) byPeriod[p] = { total: 0, accepted: 0, salaries: [], ratings: [] };
+      byPeriod[p].total++;
+      if (ACCEPTED_RESULTS.has(a.result)) byPeriod[p].accepted++;
+      if (a.salary != null && a.salary > 0) byPeriod[p].salaries.push(a.salary);
+      if (a.rating != null) byPeriod[p].ratings.push(a.rating);
+    });
+    return Object.entries(byPeriod)
+      .map(([period, { total, accepted, salaries, ratings }]) => ({
+        period,
+        total,
+        accepted,
+        acceptRate: parseFloat(((accepted / total) * 100).toFixed(1)),
+        avgSalary: salaries.length > 0 ? Math.round(salaries.reduce((s, v) => s + v, 0) / salaries.length) : 0,
+        avgRating: ratings.length > 0 ? parseFloat((ratings.reduce((s, v) => s + v, 0) / ratings.length).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => {
+        const [ya, sa] = a.period.split(" ");
+        const [yb, sb] = b.period.split(" ");
+        const yearDiff = parseInt(ya) - parseInt(yb);
+        return yearDiff !== 0 ? yearDiff : (SEASON_ORDER_A[sa] ?? 0) - (SEASON_ORDER_A[sb] ?? 0);
+      });
+  }, [filtered]);
+
+  // — Torpil vs Torpilsiz kabul oranı —
+  const referralAccept = [
+    { name: "Torpilli", key: "referral", apps: filtered.filter((a) => a.found_with_referral) },
+    { name: "Torpilsiz", key: "organic", apps: filtered.filter((a) => !a.found_with_referral) },
+  ].map(({ name, key, apps }) => ({
+    name, key,
+    total: apps.length,
+    accepted: apps.filter((a) => ACCEPTED_RESULTS.has(a.result)).length,
+    rate: apps.length > 0 ? parseFloat(((apps.filter((a) => ACCEPTED_RESULTS.has(a.result)).length / apps.length) * 100).toFixed(1)) : 0,
+  })).filter((d) => d.total > 0);
+
   return (
     <div className="min-h-screen bg-[#020917] space-grid">
       <header className="border-b border-slate-800/50 bg-[#020917]/80 backdrop-blur-xl sticky top-0 z-10">
@@ -416,7 +456,7 @@ export default function AnalyticsPage() {
 
             <Tabs defaultValue="companies">
               <TabsList className="bg-slate-800/50 border border-slate-700/50 p-1 rounded-xl flex-wrap h-auto gap-1">
-                {[["companies","Şirketler"],["salary","Günlük Ücret & Puan"],["demographic","Demografik"],["interests","İlgi Alanları"],["minor","Çap/Yandal"],["results","Sonuç Dağılımı"],["database","Veritabanı"]].map(([v,l]) => (
+                {[["companies","Şirketler"],["salary","Günlük Ücret & Puan"],["trend","Dönem Trendi"],["demographic","Demografik"],["interests","İlgi Alanları"],["minor","Çap/Yandal"],["results","Sonuç Dağılımı"],["database","Veritabanı"]].map(([v,l]) => (
                   <TabsTrigger key={v} value={v} className="data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400 rounded-lg text-slate-400 text-xs px-3 py-1.5">{l}</TabsTrigger>
                 ))}
               </TabsList>
@@ -524,6 +564,27 @@ export default function AnalyticsPage() {
                     )}
                   </div>
 
+                  {referralAccept.length > 0 && (
+                    <div className={CARD}>
+                      <h3 className="text-base font-semibold text-slate-100 mb-5">Torpil vs Torpilsiz — Kabul Oranı (%)</h3>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <BarChart data={referralAccept} margin={{ left: 0, right: 20 }}>
+                          <XAxis dataKey="name" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 13 }} />
+                          <YAxis domain={[0, 100]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <Tooltip {...TT} formatter={(v) => [`%${typeof v === "number" ? v : 0}`, "Kabul Oranı"]} />
+                          <Bar dataKey="rate" name="Kabul Oranı" radius={[6,6,0,0]}>
+                            {referralAccept.map((e) => <Cell key={e.key} fill={NEON[e.key]} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                      <div className="flex gap-6 mt-3">
+                        {referralAccept.map((e) => (
+                          <p key={e.key} className="text-xs text-slate-500">{e.name}: {e.accepted}/{e.total} kabul</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className={CARD}>
                     <h3 className="text-base font-semibold text-slate-100 mb-5">Torpil Dağılımı</h3>
                     {referralDist.length === 0 ? <p className="text-slate-500 text-center py-12">Veri yok</p> : (
@@ -539,6 +600,91 @@ export default function AnalyticsPage() {
                     )}
                   </div>
                 </div>
+              </TabsContent>
+
+              {/* ── Dönem Trendi ── */}
+              <TabsContent value="trend" className="mt-4 space-y-4">
+                {periodTrend.length === 0 ? (
+                  <div className={`${CARD} text-center py-12 text-slate-500`}>Henüz dönem verisi yok — başvurulara dönem eklenince burada görünür.</div>
+                ) : (
+                  <>
+                    <div className={CARD}>
+                      <h3 className="text-base font-semibold text-slate-100 mb-5">Dönem Bazında Başvuru & Kabul</h3>
+                      <ResponsiveContainer width="100%" height={Math.max(220, periodTrend.length * 48)}>
+                        <BarChart data={periodTrend} margin={{ left: 0, right: 20 }}>
+                          <XAxis dataKey="period" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <YAxis stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <Tooltip {...TT} />
+                          <Legend wrapperStyle={{ color: "#94a3b8", fontSize: "12px" }} />
+                          <Bar dataKey="total" name="Toplam" fill={NEON.total} radius={[4,4,0,0]} />
+                          <Bar dataKey="accepted" name="Kabul" fill={NEON.olumlu} radius={[4,4,0,0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className={CARD}>
+                        <h3 className="text-base font-semibold text-slate-100 mb-5">Dönem Bazında Kabul Oranı (%)</h3>
+                        <ResponsiveContainer width="100%" height={220}>
+                          <BarChart data={periodTrend}>
+                            <XAxis dataKey="period" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                            <YAxis domain={[0, 100]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                            <Tooltip {...TT} formatter={(v) => [`%${typeof v === "number" ? v : 0}`, "Kabul Oranı"]} />
+                            <Bar dataKey="acceptRate" name="Kabul Oranı" radius={[4,4,0,0]}>
+                              {periodTrend.map((e, i) => <Cell key={i} fill={`hsl(${120 * (e.acceptRate / 100)}, 75%, 55%)`} />)}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {periodTrend.some((p) => p.avgSalary > 0) && (
+                        <div className={CARD}>
+                          <h3 className="text-base font-semibold text-slate-100 mb-5">Dönem Bazında Ort. Günlük Ücret (₺)</h3>
+                          <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={periodTrend.filter((p) => p.avgSalary > 0)}>
+                              <XAxis dataKey="period" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                              <YAxis stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}K`} />
+                              <Tooltip {...TT} formatter={(v) => [typeof v === "number" ? `${v.toLocaleString("tr-TR")} ₺` : "—", "Ort. Günlük Ücret"]} />
+                              <Bar dataKey="avgSalary" name="Ort. Günlük Ücret" fill={NEON.salary} radius={[4,4,0,0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={CARD}>
+                      <h3 className="text-base font-semibold text-slate-100 mb-4">Dönem Özet Tablosu</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-left text-xs text-slate-500 border-b border-slate-700/50">
+                              <th className="pb-3 pr-6 font-medium">Dönem</th>
+                              <th className="pb-3 pr-6 font-medium text-right">Başvuru</th>
+                              <th className="pb-3 pr-6 font-medium text-right">Kabul</th>
+                              <th className="pb-3 pr-6 font-medium text-right">Kabul %</th>
+                              <th className="pb-3 pr-6 font-medium text-right">Ort. Ücret</th>
+                              <th className="pb-3 font-medium text-right">Ort. Puan</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/50">
+                            {periodTrend.map((row) => (
+                              <tr key={row.period} className="text-slate-300">
+                                <td className="py-2.5 pr-6 font-medium text-slate-100">{row.period}</td>
+                                <td className="py-2.5 pr-6 text-right">{row.total}</td>
+                                <td className="py-2.5 pr-6 text-right text-green-400">{row.accepted}</td>
+                                <td className="py-2.5 pr-6 text-right">
+                                  <span style={{ color: `hsl(${120 * (row.acceptRate / 100)}, 75%, 60%)` }}>%{row.acceptRate}</span>
+                                </td>
+                                <td className="py-2.5 pr-6 text-right text-orange-400">{row.avgSalary > 0 ? `${row.avgSalary.toLocaleString("tr-TR")} ₺` : "—"}</td>
+                                <td className="py-2.5 text-right text-yellow-400">{row.avgRating > 0 ? `${row.avgRating} / 5` : "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
               </TabsContent>
 
               {/* ── Demografik ── */}

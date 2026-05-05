@@ -100,7 +100,8 @@ select
   a.salary,
   a.rating,
   a.interview_note,
-  a.experience_note
+  a.experience_note,
+  a.period
 from public.applications as a
 where a.interview_note is not null
    or a.experience_note is not null;

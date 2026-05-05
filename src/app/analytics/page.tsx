@@ -39,6 +39,7 @@ type CommentRow = {
   rating: number | null;
   interview_note: string | null;
   experience_note: string | null;
+  period: string | null;
 };
 
 type PublicSummaryRow = {
@@ -66,6 +67,7 @@ const RESULT_LABELS: Record<string, string> = {
 };
 
 const ACCEPTED_RESULTS = new Set(["olumlu", "staji_bitirdim"]);
+const SEASON_ORDER: Record<string, number> = { Bahar: 0, Yaz: 1, Güz: 2 };
 
 const TT = {
   contentStyle: { backgroundColor: "#0d1627", border: "1px solid rgba(34,211,238,0.15)", borderRadius: "10px", color: "#e2e8f0", fontSize: "12px" },
@@ -125,7 +127,7 @@ export default function AnalyticsPage() {
             .select("company_name, application_department, result, rejection_stage, found_with_referral, salary, rating, rating_environment, rating_facilities, rating_colleagues, rating_technical, gpa, interests, profile_department, class_year, minor_department, gender, period"),
           supabase
             .from("analytics_comments_authenticated")
-            .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note"),
+            .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note, period"),
           supabase.rpc("get_platform_stats"),
         ]);
 
@@ -138,8 +140,6 @@ export default function AnalyticsPage() {
     }
     loadData();
   }, []);
-
-  const SEASON_ORDER: Record<string, number> = { Bahar: 0, Yaz: 1, Güz: 2 };
 
   const uniqueCompanies = useMemo(() => [...new Set(applications.map((a) => a.company_name))].sort(), [applications]);
   const uniqueDepts = useMemo(() =>
@@ -175,8 +175,9 @@ export default function AnalyticsPage() {
       (resultFilter === "olumlu"
         ? ACCEPTED_RESULTS.has(comment.result)
         : comment.result === resultFilter);
-    return mc && md && mr;
-  }), [comments, companyFilter, departmentFilter, resultFilter]);
+    const mp = periodFilter === "tümü" || comment.period === periodFilter;
+    return mc && md && mr && mp;
+  }), [comments, companyFilter, departmentFilter, resultFilter, periodFilter]);
 
   const publicTotal = publicSummary.total_count ?? 0;
   const publicAccepted = publicSummary.accepted_count ?? 0;
@@ -331,7 +332,6 @@ export default function AnalyticsPage() {
   const withMinor = filtered.filter((a) => a.minor_department).length;
 
   // — Dönem Trendi —
-  const SEASON_ORDER_A: Record<string, number> = { Bahar: 0, Yaz: 1, Güz: 2 };
   const periodTrend = useMemo(() => {
     const byPeriod: Record<string, { total: number; accepted: number; salaries: number[]; ratings: number[] }> = {};
     filtered.forEach((a) => {
@@ -355,7 +355,7 @@ export default function AnalyticsPage() {
         const [ya, sa] = a.period.split(" ");
         const [yb, sb] = b.period.split(" ");
         const yearDiff = parseInt(ya) - parseInt(yb);
-        return yearDiff !== 0 ? yearDiff : (SEASON_ORDER_A[sa] ?? 0) - (SEASON_ORDER_A[sb] ?? 0);
+        return yearDiff !== 0 ? yearDiff : (SEASON_ORDER[sa] ?? 0) - (SEASON_ORDER[sb] ?? 0);
       });
   }, [filtered]);
 
@@ -999,14 +999,21 @@ export default function AnalyticsPage() {
 
                     return (
                       <div key={comment.id} className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-5 space-y-3">
-                        <div className="flex items-center gap-2 justify-between">
-                          <div>
-                            <span className="font-semibold text-slate-100 text-sm">{comment.company_name}</span>
-                            {comment.application_department && (
-                              <span className="text-slate-500 text-xs ml-2">— {comment.application_department}</span>
+                        <div className="flex items-start gap-3 justify-between">
+                          <div className="space-y-1">
+                            <div>
+                              <span className="font-semibold text-slate-100 text-sm">{comment.company_name}</span>
+                              {comment.application_department && (
+                                <span className="text-slate-500 text-xs ml-2">— {comment.application_department}</span>
+                              )}
+                            </div>
+                            {comment.period && (
+                              <span className="inline-flex items-center rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
+                                {comment.period}
+                              </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 justify-end flex-wrap">
                             {comment.rating && <span className="text-amber-400 text-xs">{"★".repeat(comment.rating)}</span>}
                             {comment.salary && <span className="text-orange-400/70 text-xs">{comment.salary.toLocaleString("tr-TR")} ₺/gün</span>}
                             <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${resultClass}`}>{RESULT_LABELS[comment.result]}</span>

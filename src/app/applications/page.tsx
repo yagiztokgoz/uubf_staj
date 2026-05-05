@@ -14,7 +14,7 @@ type Application = {
   found_with_referral: boolean | null;
   interview_note: string | null;
   experience_note: string | null;
-  applied_at: string;
+  period: string | null;
   salary: number | null;
   rating: number | null;
 };
@@ -25,7 +25,7 @@ type FormState = {
   result: string;
   interview_note: string;
   experience_note: string;
-  applied_at: string;
+  period: string;
   salary: string;
   rating: number | null;
   found_with_referral: boolean;
@@ -60,10 +60,42 @@ const RESULT_OPTIONS = [
   { value: "ret", label: "Ret" },
 ];
 
+const SEASON_ORDER: Record<string, number> = { Bahar: 0, Yaz: 1, Güz: 2 };
+
+function currentPeriod(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const season = month <= 5 ? "Bahar" : month <= 8 ? "Yaz" : "Güz";
+  return `${year} ${season}`;
+}
+
+function generatePeriods(): string[] {
+  const currentYear = new Date().getFullYear();
+  const periods: string[] = [];
+  for (let year = currentYear; year >= 2024; year--) {
+    for (const season of ["Güz", "Yaz", "Bahar"]) {
+      periods.push(`${year} ${season}`);
+    }
+  }
+  return periods;
+}
+
+function sortByPeriod(a: Application, b: Application): number {
+  const parse = (p: string | null): [number, number] => {
+    if (!p) return [0, 0];
+    const [year, season] = p.split(" ");
+    return [parseInt(year) || 0, SEASON_ORDER[season] ?? 0];
+  };
+  const [ya, sa] = parse(a.period);
+  const [yb, sb] = parse(b.period);
+  return yb !== ya ? yb - ya : sb - sa;
+}
+
 const EMPTY_FORM: FormState = {
   company_name: "", department: "", result: "beklemede",
   interview_note: "", experience_note: "",
-  applied_at: new Date().toISOString().split("T")[0],
+  period: currentPeriod(),
   salary: "", rating: null, found_with_referral: false,
 };
 
@@ -168,8 +200,8 @@ export default function ApplicationsPage() {
 
       setUserId(user.id);
       setUserEmail(user.email ?? null);
-      const { data } = await supabase.from("applications").select("*").eq("user_id", user.id).order("applied_at", { ascending: false });
-      setApplications(data ?? []);
+      const { data } = await supabase.from("applications").select("*").eq("user_id", user.id);
+      setApplications((data ?? []).sort(sortByPeriod));
       setLoading(false);
     }
     loadData();
@@ -207,7 +239,7 @@ export default function ApplicationsPage() {
       found_with_referral: form.found_with_referral,
       interview_note: form.interview_note.trim() || null,
       experience_note: form.experience_note.trim() || null,
-      applied_at: form.applied_at,
+      period: form.period,
       ...(form.salary.trim() ? { salary: parseInt(form.salary, 10) } : {}),
       ...(form.rating !== null ? { rating: form.rating } : {}),
     };
@@ -232,7 +264,7 @@ export default function ApplicationsPage() {
                 rating: "rating" in payload ? payload.rating ?? null : a.rating,
               }
             : a
-        )
+        ).sort(sortByPeriod)
       );
     } else {
       const { data, error } = await supabase.from("applications").insert({ ...payload, user_id: userId }).select().single();
@@ -244,7 +276,7 @@ export default function ApplicationsPage() {
       }
 
       toast.success("Başvuru eklendi!");
-      setApplications((p) => [data, ...p]);
+      setApplications((p) => [data, ...p].sort(sortByPeriod));
     }
 
     setForm(EMPTY_FORM);
@@ -261,7 +293,7 @@ export default function ApplicationsPage() {
       found_with_referral: Boolean(app.found_with_referral),
       interview_note: app.interview_note ?? "",
       experience_note: app.experience_note ?? "",
-      applied_at: app.applied_at,
+      period: app.period ?? currentPeriod(),
       salary: app.salary?.toString() ?? "",
       rating: app.rating,
     });
@@ -321,6 +353,13 @@ export default function ApplicationsPage() {
 
         {showForm && (
           <div className="bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6">
+            <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl px-4 py-3 text-sm text-amber-200 flex items-start gap-2 mb-5">
+              <span className="shrink-0 font-bold">!</span>
+              <span>
+                <strong>Birim / departman adını tutarlı yazmaya özen gösterin.</strong>{" "}
+                Büyük harf otomatik uygulanır. Örn: UÇUŞ YAZILIMLARI, AERODİNAMİK, YAZILIM GELİŞTİRME
+              </span>
+            </div>
             <h3 className="text-base font-semibold text-slate-100 mb-5 flex items-center gap-2">
               <span className="w-1 h-4 bg-gradient-to-b from-cyan-400 to-blue-500 rounded-full" />
               {editingId ? "Başvuruyu Düzenle" : "Yeni Başvuru"}
@@ -346,14 +385,18 @@ export default function ApplicationsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className={LABEL_CLASS}>Başvuru Tarihi</label>
-                  <input type="date" value={form.applied_at} onChange={(e) => setForm({ ...form, applied_at: e.target.value })} className={INPUT_CLASS} />
+                  <label className={LABEL_CLASS}>Dönem</label>
+                  <select value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })} className={SELECT_CLASS}>
+                    {generatePeriods().map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={LABEL_CLASS}>Aylık Ücret <span className="text-slate-500 text-xs">(TL, opsiyonel)</span></label>
-                  <input type="number" min="0" placeholder="15000" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} className={INPUT_CLASS} />
+                  <label className={LABEL_CLASS}>Günlük Ücret <span className="text-slate-500 text-xs">(TL, opsiyonel)</span></label>
+                  <input type="number" min="0" placeholder="600" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} className={INPUT_CLASS} />
                 </div>
                 <div>
                   <label className={LABEL_CLASS}>Genel Değerlendirme <span className="text-slate-500 text-xs">(opsiyonel)</span></label>
@@ -422,8 +465,8 @@ export default function ApplicationsPage() {
                         ) : null}
                       </div>
                         <div className="flex items-center gap-3 text-xs text-slate-600">
-                          <span>{app.applied_at}</span>
-                          {app.salary && <span className="text-amber-400/70">{app.salary.toLocaleString("tr-TR")} TL/ay</span>}
+                          {app.period && <span>{app.period}</span>}
+                          {app.salary && <span className="text-amber-400/70">{app.salary.toLocaleString("tr-TR")} ₺/gün</span>}
                           {app.rating && <span className="text-amber-400">{"★".repeat(app.rating)}{"☆".repeat(5 - app.rating)}</span>}
                         </div>
                       {app.interview_note && (

@@ -40,6 +40,10 @@ type PublicSummaryRow = {
   accepted_count: number;
 };
 
+type PlatformStats = {
+  total_users: number;
+};
+
 const NEON: Record<string, string> = {
   olumlu: "#4ade80", ret: "#f87171",
   mulakat_bekleniyor: "#22d3ee", beklemede: "#fbbf24",
@@ -80,6 +84,7 @@ export default function AnalyticsPage() {
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [publicSummary, setPublicSummary] = useState<PublicSummaryRow>({ total_count: 0, accepted_count: 0 });
+  const [platformStats, setPlatformStats] = useState<PlatformStats>({ total_users: 0 });
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [companyFilter, setCompanyFilter] = useState("tümü");
@@ -106,6 +111,7 @@ export default function AnalyticsPage() {
         const [
           { data: applicationsData },
           { data: commentsData },
+          { data: statsData },
         ] = await Promise.all([
           supabase
             .from("analytics_applications_anonymous")
@@ -113,10 +119,12 @@ export default function AnalyticsPage() {
           supabase
             .from("analytics_comments_authenticated")
             .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note"),
+          supabase.rpc("get_platform_stats"),
         ]);
 
         setApplications((applicationsData as unknown as ApplicationRow[]) ?? []);
         setComments((commentsData as unknown as CommentRow[]) ?? []);
+        if (statsData) setPlatformStats(statsData as unknown as PlatformStats);
       }
 
       setLoading(false);
@@ -163,6 +171,7 @@ export default function AnalyticsPage() {
   const avgGPA = acceptedGPAs.length > 0 ? (acceptedGPAs.reduce((s, g) => s + g, 0) / acceptedGPAs.length).toFixed(2) : "—";
   const salaries = filtered.filter((a) => a.salary != null && a.salary > 0).map((a) => a.salary!);
   const avgSalary = salaries.length > 0 ? Math.round(salaries.reduce((s, v) => s + v, 0) / salaries.length).toLocaleString("tr-TR") : "—";
+  const avgSalaryLabel = avgSalary === "—" ? "—" : `${avgSalary} ₺`;
   const ratings = filtered.filter((a) => a.rating != null).map((a) => a.rating!);
   const avgRating = ratings.length > 0 ? (ratings.reduce((s, v) => s + v, 0) / ratings.length).toFixed(1) : "—";
   const referralCount = filtered.filter((a) => a.found_with_referral).length;
@@ -377,14 +386,14 @@ export default function AnalyticsPage() {
               <StatCard label="Kabul Oranı" value={`%${acceptRate}`} color="text-green-400" />
               <StatCard label="Kabul Edilen" value={accepted} color="text-green-400" />
               <StatCard label="Kabul Ort. GPA" value={avgGPA} color="text-cyan-400" />
-              <StatCard label="Ort. Maaş" value={avgSalary === "—" ? "—" : `${avgSalary} ₺`} color="text-orange-400" sub={`${salaries.length} veri`} />
+              <StatCard label="Ort. Günlük Ücret" value={avgSalaryLabel} color="text-orange-400" sub={`${salaries.length} veri`} />
               <StatCard label="Ort. Puan" value={avgRating === "—" ? "—" : `${avgRating} / 5`} color="text-yellow-400" sub={`${ratings.length} değerlendirme`} />
               <StatCard label="Torpil Oranı" value={`%${referralRate}`} color="text-fuchsia-300" sub={`${referralCount} kayıt`} />
             </div>
 
             <Tabs defaultValue="companies">
               <TabsList className="bg-slate-800/50 border border-slate-700/50 p-1 rounded-xl flex-wrap h-auto gap-1">
-                {[["companies","Şirketler"],["salary","Maaş & Puan"],["demographic","Demografik"],["interests","İlgi Alanları"],["minor","Çap/Yandal"],["results","Sonuç Dağılımı"]].map(([v,l]) => (
+                {[["companies","Şirketler"],["salary","Günlük Ücret & Puan"],["demographic","Demografik"],["interests","İlgi Alanları"],["minor","Çap/Yandal"],["results","Sonuç Dağılımı"],["database","Veritabanı"]].map(([v,l]) => (
                   <TabsTrigger key={v} value={v} className="data-[state=active]:bg-slate-700 data-[state=active]:text-cyan-400 rounded-lg text-slate-400 text-xs px-3 py-1.5">{l}</TabsTrigger>
                 ))}
               </TabsList>
@@ -413,16 +422,16 @@ export default function AnalyticsPage() {
               <TabsContent value="salary" className="mt-4 space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className={`${CARD} text-center`}>
-                    <p className="text-xs text-slate-500 mb-1">Maaşlı Staj</p>
+                    <p className="text-xs text-slate-500 mb-1">Ücretli Staj</p>
                     <p className="text-2xl font-bold text-orange-400">{total > 0 ? `%${((paidCount / total) * 100).toFixed(0)}` : "—"}</p>
                     <p className="text-xs text-slate-600 mt-0.5">{paidCount} / {total} başvuru</p>
                   </div>
                   <div className={`${CARD} text-center`}>
-                    <p className="text-xs text-slate-500 mb-1">En Yüksek Maaş</p>
+                    <p className="text-xs text-slate-500 mb-1">En Yüksek Günlük Ücret</p>
                     <p className="text-2xl font-bold text-orange-400">{salaries.length > 0 ? `${Math.max(...salaries).toLocaleString("tr-TR")} ₺` : "—"}</p>
                   </div>
                   <div className={`${CARD} text-center`}>
-                    <p className="text-xs text-slate-500 mb-1">En Düşük Maaş</p>
+                    <p className="text-xs text-slate-500 mb-1">En Düşük Günlük Ücret</p>
                     <p className="text-2xl font-bold text-orange-400">{salaries.length > 0 ? `${Math.min(...salaries).toLocaleString("tr-TR")} ₺` : "—"}</p>
                   </div>
                   <div className={`${CARD} text-center`}>
@@ -434,13 +443,13 @@ export default function AnalyticsPage() {
 
                 {salaryByCompany.length > 0 && (
                   <div className={CARD}>
-                    <h3 className="text-base font-semibold text-slate-100 mb-5">Şirket Bazında Ortalama Maaş (₺/ay)</h3>
+                    <h3 className="text-base font-semibold text-slate-100 mb-5">Şirket Bazında Ortalama Günlük Ücret (₺/gün)</h3>
                     <ResponsiveContainer width="100%" height={Math.max(280, salaryByCompany.length * 36)}>
                       <BarChart data={salaryByCompany} layout="vertical" margin={{ left: 10, right: 60 }}>
                         <XAxis type="number" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}K`} />
                         <YAxis type="category" dataKey="company" width={150} tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                        <Tooltip {...TT} formatter={(v) => [typeof v === "number" ? `${v.toLocaleString("tr-TR")} ₺` : "—", "Ort. Maaş"]} />
-                        <Bar dataKey="avg" name="Ort. Maaş" fill={NEON.salary} radius={[0,4,4,0]} />
+                        <Tooltip {...TT} formatter={(v) => [typeof v === "number" ? `${v.toLocaleString("tr-TR")} ₺` : "—", "Ort. Günlük Ücret"]} />
+                        <Bar dataKey="avg" name="Ort. Günlük Ücret" fill={NEON.salary} radius={[0,4,4,0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -478,7 +487,7 @@ export default function AnalyticsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className={CARD}>
-                    <h3 className="text-base font-semibold text-slate-100 mb-5">Maaşlı / Maaşsız Dağılımı</h3>
+                    <h3 className="text-base font-semibold text-slate-100 mb-5">Ücretli / Ücretsiz Dağılımı</h3>
                     {paidDist.length === 0 ? <p className="text-slate-500 text-center py-12">Veri yok</p> : (
                       <ResponsiveContainer width="100%" height={240}>
                         <PieChart>
@@ -662,6 +671,59 @@ export default function AnalyticsPage() {
                   )}
                 </div>
               </TabsContent>
+
+              {/* ── Veritabanı ── */}
+              <TabsContent value="database" className="mt-4 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <StatCard
+                    label="Kayıtlı Kullanıcı"
+                    value={platformStats.total_users}
+                    color="text-cyan-400"
+                    sub="toplam profil"
+                  />
+                  <StatCard
+                    label="Toplam Başvuru Kaydı"
+                    value={publicSummary.total_count}
+                    color="text-violet-400"
+                    sub="tüm kullanıcılar"
+                  />
+                  <StatCard
+                    label="Kullanıcı Başına Ort. Başvuru"
+                    value={
+                      platformStats.total_users > 0
+                        ? (publicSummary.total_count / platformStats.total_users).toFixed(1)
+                        : "—"
+                    }
+                    color="text-blue-400"
+                  />
+                </div>
+                <div className={CARD}>
+                  <h3 className="text-base font-semibold text-slate-100 mb-4">Platform Özeti</h3>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Kayıtlı kullanıcı sayısı", value: platformStats.total_users, color: "bg-cyan-500" },
+                      { label: "Toplam başvuru kaydı", value: publicSummary.total_count, color: "bg-violet-500" },
+                      { label: "Kabul edilen stajlar", value: publicSummary.accepted_count, color: "bg-green-500" },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} className="flex items-center gap-3">
+                        <span className="text-sm text-slate-400 w-64 shrink-0">{label}</span>
+                        <div className="flex-1 bg-slate-800/50 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${color}`}
+                            style={{
+                              width: `${Math.min(
+                                100,
+                                publicSummary.total_count > 0 ? (value / Math.max(platformStats.total_users, publicSummary.total_count)) * 100 : 0
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <span className="text-sm font-semibold text-slate-200 w-10 text-right">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </TabsContent>
             </Tabs>
 
             {loggedIn && filteredComments.length > 0 && (
@@ -692,7 +754,7 @@ export default function AnalyticsPage() {
                           </div>
                           <div className="flex items-center gap-2">
                             {comment.rating && <span className="text-amber-400 text-xs">{"★".repeat(comment.rating)}</span>}
-                            {comment.salary && <span className="text-orange-400/70 text-xs">{comment.salary.toLocaleString("tr-TR")} ₺</span>}
+                            {comment.salary && <span className="text-orange-400/70 text-xs">{comment.salary.toLocaleString("tr-TR")} ₺/gün</span>}
                             <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${resultClass}`}>{RESULT_LABELS[comment.result]}</span>
                           </div>
                         </div>

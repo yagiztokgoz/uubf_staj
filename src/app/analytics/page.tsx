@@ -41,6 +41,7 @@ type CommentRow = {
   interview_note: string | null;
   experience_note: string | null;
   period: string | null;
+  created_at: string;
 };
 
 type PublicSummaryRow = {
@@ -78,6 +79,22 @@ const TT = {
 
 const SC = "bg-slate-800/50 border border-slate-700/50 text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 transition-all appearance-none";
 const CARD = "bg-slate-900/60 border border-slate-700/50 rounded-2xl p-6";
+
+function makeXAxisTick(maxLen: number) {
+  return function XAxisTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
+    const text = payload?.value ?? "";
+    const display = text.length > maxLen ? text.slice(0, maxLen) + "…" : text;
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} dy={12} textAnchor="end" fill="#94a3b8" fontSize={10} transform="rotate(-40)">
+          {display}
+        </text>
+      </g>
+    );
+  };
+}
+const CompanyTick = makeXAxisTick(13);
+const InterestTick = makeXAxisTick(20);
 
 function StatCard({ label, value, sub, color = "text-slate-100" }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
@@ -128,7 +145,8 @@ export default function AnalyticsPage() {
             .select("company_name, application_department, result, rejection_stage, found_with_referral, salary, rating, rating_environment, rating_facilities, rating_colleagues, rating_work_conditions, rating_technical, gpa, interests, profile_department, class_year, minor_department, gender, period"),
           supabase
             .from("analytics_comments_authenticated")
-            .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note, period"),
+            .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note, period, created_at")
+            .order("created_at", { ascending: false }),
           supabase.rpc("get_platform_stats"),
         ]);
 
@@ -494,15 +512,15 @@ export default function AnalyticsPage() {
                 <div className={CARD}>
                   <h3 className="text-base font-semibold text-slate-100 mb-5">Şirket Bazında Başvurular</h3>
                   {companyStats.length === 0 ? <p className="text-slate-500 text-center py-12">Veri yok</p> : (
-                    <ResponsiveContainer width="100%" height={Math.max(300, companyStats.length * 32)}>
-                      <BarChart data={companyStats} layout="vertical" margin={{ left: 10, right: 40 }}>
-                        <XAxis type="number" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                        <YAxis type="category" dataKey="company" width={150} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <ResponsiveContainer width="100%" height={320}>
+                      <BarChart data={companyStats} margin={{ top: 10, right: 20, left: 0, bottom: 90 }}>
+                        <XAxis dataKey="company" stroke="#475569" tick={<CompanyTick />} interval={0} />
+                        <YAxis stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
                         <Tooltip {...TT} />
                         <Legend wrapperStyle={{ color: "#94a3b8", fontSize: "12px" }} />
-                        <Bar dataKey="total" name="Toplam" fill={NEON.total} radius={[0,4,4,0]} />
-                        <Bar dataKey="olumlu" name="Kabul" fill={NEON.olumlu} radius={[0,4,4,0]} />
-                        <Bar dataKey="ret" name="Ret" fill={NEON.ret} radius={[0,4,4,0]} />
+                        <Bar dataKey="total" name="Toplam" fill={NEON.total} radius={[4,4,0,0]} />
+                        <Bar dataKey="olumlu" name="Kabul" fill={NEON.olumlu} radius={[4,4,0,0]} />
+                        <Bar dataKey="ret" name="Ret" fill={NEON.ret} radius={[4,4,0,0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -535,12 +553,12 @@ export default function AnalyticsPage() {
                 {salaryByCompany.length > 0 && (
                   <div className={CARD}>
                     <h3 className="text-base font-semibold text-slate-100 mb-5">Şirket Bazında Ortalama Günlük Ücret (₺/gün)</h3>
-                    <ResponsiveContainer width="100%" height={Math.max(280, salaryByCompany.length * 36)}>
-                      <BarChart data={salaryByCompany} layout="vertical" margin={{ left: 10, right: 60 }}>
-                        <XAxis type="number" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}K`} />
-                        <YAxis type="category" dataKey="company" width={150} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={salaryByCompany} margin={{ top: 10, right: 20, left: 0, bottom: 90 }}>
+                        <XAxis dataKey="company" stroke="#475569" tick={<CompanyTick />} interval={0} />
+                        <YAxis stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}K`} />
                         <Tooltip {...TT} formatter={(v) => [typeof v === "number" ? `${v.toLocaleString("tr-TR")} ₺` : "—", "Ort. Günlük Ücret"]} />
-                        <Bar dataKey="avg" name="Ort. Günlük Ücret" fill={NEON.salary} radius={[0,4,4,0]} />
+                        <Bar dataKey="avg" name="Ort. Günlük Ücret" fill={NEON.salary} radius={[4,4,0,0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -564,12 +582,12 @@ export default function AnalyticsPage() {
                   {ratingByCompany.length > 0 && (
                     <div className={CARD}>
                       <h3 className="text-base font-semibold text-slate-100 mb-5">Şirket Bazında Ort. Puan</h3>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={ratingByCompany.slice(0,8)} layout="vertical">
-                          <XAxis type="number" domain={[0,5]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                          <YAxis type="category" dataKey="company" width={120} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                      <ResponsiveContainer width="100%" height={280}>
+                        <BarChart data={ratingByCompany.slice(0,8)} margin={{ top: 10, right: 20, left: 0, bottom: 90 }}>
+                          <XAxis dataKey="company" stroke="#475569" tick={<CompanyTick />} interval={0} />
+                          <YAxis domain={[0,5]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
                           <Tooltip {...TT} />
-                          <Bar dataKey="avg" name="Ort. Puan" fill={NEON.rating} radius={[0,4,4,0]} />
+                          <Bar dataKey="avg" name="Ort. Puan" fill={NEON.rating} radius={[4,4,0,0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -832,12 +850,12 @@ export default function AnalyticsPage() {
                   <div key={title} className={CARD}>
                     <h3 className="text-base font-semibold text-slate-100 mb-5">{title}</h3>
                     {data.length === 0 ? <p className="text-slate-500 text-center py-8">Veri yok</p> : (
-                      <ResponsiveContainer width="100%" height={Math.max(250, data.length * 28)}>
-                        <BarChart data={data} layout="vertical" margin={{ left: 10, right: 20 }}>
-                          <XAxis type="number" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                          <YAxis type="category" dataKey="interest" width={220} tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                      <ResponsiveContainer width="100%" height={340}>
+                        <BarChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 110 }}>
+                          <XAxis dataKey="interest" stroke="#475569" tick={<InterestTick />} interval={0} />
+                          <YAxis stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
                           <Tooltip {...TT} />
-                          <Bar dataKey="count" name="Kişi" fill={color} radius={[0,4,4,0]} />
+                          <Bar dataKey="count" name="Kişi" fill={color} radius={[4,4,0,0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     )}
@@ -855,12 +873,12 @@ export default function AnalyticsPage() {
                   {minorData.length === 0 ? <p className="text-slate-500 text-center py-12">Veri yok</p> : (
                     <div className="space-y-2.5">
                       {minorData.map(({ minor, count }) => (
-                        <div key={minor} className="flex items-center gap-3">
-                          <span className="text-sm text-slate-300 w-72 shrink-0">{minor}</span>
-                          <div className="flex-1 bg-slate-800/50 rounded-full h-1.5">
+                        <div key={minor} className="flex items-center gap-3 min-w-0">
+                          <span className="text-sm text-slate-300 w-32 md:w-64 shrink-0 truncate">{minor}</span>
+                          <div className="flex-1 min-w-0 bg-slate-800/50 rounded-full h-1.5">
                             <div className="h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500" style={{ width: `${(count / withMinor) * 100}%` }} />
                           </div>
-                          <span className="text-sm text-slate-400 w-6 text-right">{count}</span>
+                          <span className="text-sm text-slate-400 w-6 text-right shrink-0">{count}</span>
                         </div>
                       ))}
                     </div>

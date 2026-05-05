@@ -70,11 +70,15 @@ export default function LoginPage() {
         <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl px-5 py-4 space-y-2.5 text-sm text-slate-400">
           <div className="flex items-start gap-2.5">
             <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
-            <span>İTÜ mail adresinizi yazın, gelen kutuya giriş linki gönderelim. Hesap oluşturmanıza gerek yok.</span>
+            <span>İTÜ mail adresinizi yazın, mailinize giriş linki gönderelim. Hesap oluşturmanıza gerek yok.</span>
           </div>
           <div className="flex items-start gap-2.5">
             <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
             <span>Yalnızca <span className="text-slate-300 font-medium">@itu.edu.tr</span> uzantılı adreslerle giriş yapılabilir.</span>
+          </div>
+          <div className="flex items-start gap-2.5">
+            <span className="text-amber-400 shrink-0 mt-0.5">!</span>
+            <span><span className="text-amber-300 font-medium">Giriş maili bazen spam / gereksiz / tanıtımlar klasörüne düşebilir.</span> Mail gelmediyse önce bu klasörleri kontrol et.</span>
           </div>
           <div className="flex items-start gap-2.5">
             <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
@@ -97,9 +101,10 @@ export default function LoginPage() {
               <p className="text-sm text-slate-400">
                 <span className="text-cyan-400">{email}</span> adresine giriş linki gönderdik.
               </p>
-              <p className="text-sm text-slate-400">
-                Mail 5 dakika içinde gelecektir. Spam kutuna bakmayı unutma.
-              </p>
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-left text-sm text-amber-100 space-y-1">
+                <p className="font-medium text-amber-300">Maili gelen kutusunda göremezsen spam / gereksiz / tanıtımlar klasörünü kontrol et.</p>
+                <p className="text-amber-100/80">Link genelde birkaç dakika içinde gelir. Bazen İTÜ mailinde doğrudan spam klasörüne düşebiliyor.</p>
+              </div>
               <button
                 onClick={() => setSent(false)}
                 className="text-sm text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-4 mt-2"

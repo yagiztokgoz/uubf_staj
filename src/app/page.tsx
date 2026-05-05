@@ -31,7 +31,14 @@ export default function LoginPage() {
       email: normalizedEmail,
       options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) setError(error.message);
+    if (error) {
+      const msg = error.message?.toLowerCase() ?? "";
+      if (msg.includes("rate limit") || msg.includes("too many") || msg.includes("exceeded") || error.status === 429) {
+        setError("Günlük mail limiti doldu. Lütfen birkaç saat sonra tekrar dene veya daha önce aldığın linki kullan.");
+      } else {
+        setError(error.message);
+      }
+    }
     else setSent(true);
     setLoading(false);
   }

@@ -313,6 +313,25 @@ export default function AnalyticsPage() {
   ).map(([year, { total, accepted }]) => ({ year, total, accepted, rate: parseFloat(((accepted / total) * 100).toFixed(1)) }))
     .sort((a, b) => a.year.localeCompare(b.year));
 
+  // Veritabanı sekmesi için tüm başvuru bazında demografik dağılım (filtre uygulanmadan)
+  const allClassDist = useMemo(() => Object.entries(
+    applications.reduce((acc, a) => { const c = a.class_year ?? "Belirtilmemiş"; acc[c] = (acc[c] ?? 0) + 1; return acc; }, {} as Record<string, number>)
+  ).map(([year, count]) => ({ year, count })).sort((a, b) => a.year.localeCompare(b.year)), [applications]);
+
+  const allDeptDist = useMemo(() => Object.entries(
+    applications.reduce((acc, a) => { const d = a.profile_department ?? "Belirtilmemiş"; acc[d] = (acc[d] ?? 0) + 1; return acc; }, {} as Record<string, number>)
+  ).map(([dept, count]) => ({ dept, count })).sort((a, b) => b.count - a.count), [applications]);
+
+  const allGenderDist = useMemo(() => Object.entries(
+    applications.reduce((acc, a) => { const g = a.gender ?? "belirtilmemiş"; acc[g] = (acc[g] ?? 0) + 1; return acc; }, {} as Record<string, number>)
+  ).map(([g, v]) => ({ name: g === "erkek" ? "Erkek" : g === "kadın" ? "Kadın" : g === "belirtmek istemiyorum" ? "Belirtmek İstemiyorum" : "Belirtilmemiş", value: v, key: g })), [applications]);
+
+  const allInterestData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    applications.forEach((a) => a.interests?.forEach((i) => { counts[i] = (counts[i] ?? 0) + 1; }));
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([interest, count]) => ({ interest, count }));
+  }, [applications]);
+
   // GPA aralığı bazında kabul oranı
   const gpaBuckets = [
     { label: "< 2.50", min: 0, max: 2.5 },
@@ -508,7 +527,7 @@ export default function AnalyticsPage() {
               </TabsList>
 
               {/* ── Şirketler ── */}
-              <TabsContent value="companies" className="mt-4">
+              <TabsContent value="companies" className="mt-4 space-y-4">
                 <div className={CARD}>
                   <h3 className="text-base font-semibold text-slate-100 mb-5">Şirket Bazında Başvurular</h3>
                   {companyStats.length === 0 ? <p className="text-slate-500 text-center py-12">Veri yok</p> : (
@@ -517,7 +536,7 @@ export default function AnalyticsPage() {
                         <XAxis dataKey="company" stroke="#475569" tick={<CompanyTick />} interval={0} />
                         <YAxis stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
                         <Tooltip {...TT} />
-                        <Legend wrapperStyle={{ color: "#94a3b8", fontSize: "12px" }} />
+                        <Legend verticalAlign="top" wrapperStyle={{ color: "#94a3b8", fontSize: "12px", paddingBottom: "12px" }} />
                         <Bar dataKey="total" name="Toplam" fill={NEON.total} radius={[4,4,0,0]} />
                         <Bar dataKey="olumlu" name="Kabul" fill={NEON.olumlu} radius={[4,4,0,0]} />
                         <Bar dataKey="ret" name="Ret" fill={NEON.ret} radius={[4,4,0,0]} />
@@ -525,6 +544,32 @@ export default function AnalyticsPage() {
                     </ResponsiveContainer>
                   )}
                 </div>
+
+                {classStats.length > 0 && (
+                  <div className={CARD}>
+                    <h3 className="text-base font-semibold text-slate-100 mb-1">Sınıf Yılına Göre Kabul Oranı</h3>
+                    <p className="text-xs text-slate-500 mb-5">{companyFilter !== "tümü" ? `${companyFilter} şirketine ait` : "Tüm şirketler"} · seçili filtre uygulanmış</p>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={classStats} margin={{ top: 20, right: 20, left: 0, bottom: 4 }}>
+                        <XAxis dataKey="year" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                        <YAxis domain={[0, 100]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                        <Tooltip {...TT} formatter={(v) => [`%${typeof v === "number" ? v : 0}`, "Kabul Oranı"]} />
+                        <Bar dataKey="rate" name="Kabul Oranı" radius={[4,4,0,0]} label={{ position: "top", fill: "#94a3b8", fontSize: 11, formatter: (v: number) => `%${v}` }}>
+                          {classStats.map((s, i) => <Cell key={i} fill={`hsl(${120 * (s.rate / 100)}, 75%, 55%)`} />)}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {classStats.map((s) => (
+                        <div key={s.year} className="bg-slate-800/40 rounded-lg px-3 py-2 text-center">
+                          <p className="text-xs text-slate-500">{s.year}</p>
+                          <p className="text-sm font-semibold text-slate-100 mt-0.5">{s.accepted}/{s.total}</p>
+                          <p className="text-xs mt-0.5" style={{ color: `hsl(${120 * (s.rate / 100)}, 75%, 60%)` }}>%{s.rate}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               {/* ── Maaş & Puan ── */}
@@ -774,11 +819,11 @@ export default function AnalyticsPage() {
                     <div className={CARD}>
                       <h3 className="text-base font-semibold text-slate-100 mb-4">Cinsiyet Bazında Kabul Oranı (%)</h3>
                       <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={genderAccept}>
+                        <BarChart data={genderAccept} margin={{ top: 24, right: 20, left: 0, bottom: 4 }}>
                           <XAxis dataKey="gender" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 12 }} />
                           <YAxis domain={[0, 100]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
                           <Tooltip {...TT} formatter={(v) => [`%${typeof v === "number" ? v : 0}`, "Kabul Oranı"]} />
-                          <Bar dataKey="rate" name="Kabul Oranı" radius={[4,4,0,0]}>
+                          <Bar dataKey="rate" name="Kabul Oranı" radius={[4,4,0,0]} label={{ position: "top", fill: "#e2e8f0", fontSize: 13, fontWeight: 600, formatter: (v: number) => `%${v}` }}>
                             {genderAccept.map((e) => <Cell key={e.gender} fill={e.gender === "Erkek" ? NEON.erkek : NEON.kadın} />)}
                           </Bar>
                         </BarChart>
@@ -982,20 +1027,84 @@ export default function AnalyticsPage() {
                       <div key={label} className="flex items-center gap-3">
                         <span className="text-sm text-slate-400 w-64 shrink-0">{label}</span>
                         <div className="flex-1 bg-slate-800/50 rounded-full h-2">
-                          <div
-                            className={`h-2 rounded-full ${color}`}
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                publicSummary.total_count > 0 ? (value / Math.max(platformStats.total_users, publicSummary.total_count)) * 100 : 0
-                              )}%`,
-                            }}
-                          />
+                          <div className={`h-2 rounded-full ${color}`} style={{ width: `${Math.min(100, publicSummary.total_count > 0 ? (value / Math.max(platformStats.total_users, publicSummary.total_count)) * 100 : 0)}%` }} />
                         </div>
                         <span className="text-sm font-semibold text-slate-200 w-10 text-right">{value}</span>
                       </div>
                     ))}
                   </div>
+                </div>
+
+                <p className="text-xs text-slate-600 -mt-1">Aşağıdaki dağılımlar başvuru bazındadır — filtre uygulanmamıştır.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Sınıf dağılımı */}
+                  {allClassDist.length > 0 && (
+                    <div className={CARD}>
+                      <h3 className="text-base font-semibold text-slate-100 mb-5">Sınıf Dağılımı</h3>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={allClassDist} margin={{ top: 20, right: 10, left: 0, bottom: 4 }}>
+                          <XAxis dataKey="year" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <YAxis stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <Tooltip {...TT} />
+                          <Bar dataKey="count" name="Başvuru" radius={[4,4,0,0]} label={{ position: "top", fill: "#94a3b8", fontSize: 11 }}>
+                            {allClassDist.map((_, i) => <Cell key={i} fill={`hsl(${200 + i * 20}, 70%, 55%)`} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Bölüm dağılımı */}
+                  {allDeptDist.length > 0 && (
+                    <div className={CARD}>
+                      <h3 className="text-base font-semibold text-slate-100 mb-5">Bölüm Dağılımı</h3>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={allDeptDist} margin={{ top: 20, right: 10, left: 0, bottom: 4 }}>
+                          <XAxis dataKey="dept" stroke="#475569" tick={<CompanyTick />} interval={0} />
+                          <YAxis stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <Tooltip {...TT} />
+                          <Bar dataKey="count" name="Başvuru" radius={[4,4,0,0]} label={{ position: "top", fill: "#94a3b8", fontSize: 11 }}>
+                            {allDeptDist.map((_, i) => <Cell key={i} fill={i === 0 ? NEON.mulakat_bekleniyor : NEON.total} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Cinsiyet dağılımı */}
+                  {allGenderDist.length > 0 && (
+                    <div className={CARD}>
+                      <h3 className="text-base font-semibold text-slate-100 mb-5">Cinsiyet Dağılımı</h3>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie data={allGenderDist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} innerRadius={38}
+                            label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ""} %${((percent ?? 0) * 100).toFixed(0)}`}>
+                            {allGenderDist.map((e) => <Cell key={e.key} fill={NEON[e.key] ?? NEON.belirtmek} />)}
+                          </Pie>
+                          <Tooltip contentStyle={TT.contentStyle} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* İlgi alanları */}
+                  {allInterestData.length > 0 && (
+                    <div className={CARD}>
+                      <h3 className="text-base font-semibold text-slate-100 mb-4">En Sık İlgi Alanları</h3>
+                      <div className="space-y-2">
+                        {allInterestData.map(({ interest, count }) => (
+                          <div key={interest} className="flex items-center gap-3 min-w-0">
+                            <span className="text-sm text-slate-300 w-40 md:w-56 shrink-0 truncate">{interest}</span>
+                            <div className="flex-1 min-w-0 bg-slate-800/50 rounded-full h-1.5">
+                              <div className="h-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500" style={{ width: `${(count / allInterestData[0].count) * 100}%` }} />
+                            </div>
+                            <span className="text-sm text-slate-400 w-6 text-right shrink-0">{count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>

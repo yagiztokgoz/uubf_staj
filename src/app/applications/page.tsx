@@ -22,6 +22,7 @@ type Application = {
   rating_facilities: number | null;
   rating_colleagues: number | null;
   rating_technical: number | null;
+  rating_work_conditions: number | null;
 };
 
 type FormState = {
@@ -38,6 +39,7 @@ type FormState = {
   rating_facilities: number | null;
   rating_colleagues: number | null;
   rating_technical: number | null;
+  rating_work_conditions: number | null;
   found_with_referral: boolean;
 };
 
@@ -45,6 +47,7 @@ const CATEGORY_RATINGS: { key: keyof FormState; label: string }[] = [
   { key: "rating_environment", label: "Ortam & Atmosfer" },
   { key: "rating_facilities",  label: "İmkanlar & Yan Haklar" },
   { key: "rating_colleagues",  label: "Çalışma Arkadaşları" },
+  { key: "rating_work_conditions", label: "Çalışma Koşulları" },
   { key: "rating_technical",   label: "Teknik Gelişim" },
 ];
 
@@ -116,7 +119,8 @@ const EMPTY_FORM: FormState = {
   period: currentPeriod(),
   salary: "", rating: null,
   rating_environment: null, rating_facilities: null,
-  rating_colleagues: null, rating_technical: null,
+  rating_colleagues: null, rating_work_conditions: null,
+  rating_technical: null,
   found_with_referral: false,
 };
 
@@ -283,6 +287,7 @@ export default function ApplicationsPage() {
       rating_environment: form.rating_environment,
       rating_facilities: form.rating_facilities,
       rating_colleagues: form.rating_colleagues,
+      rating_work_conditions: form.rating_work_conditions,
       rating_technical: form.rating_technical,
     };
 
@@ -341,6 +346,7 @@ export default function ApplicationsPage() {
       rating_environment: app.rating_environment,
       rating_facilities: app.rating_facilities,
       rating_colleagues: app.rating_colleagues,
+      rating_work_conditions: app.rating_work_conditions,
       rating_technical: app.rating_technical,
       rejection_stage: app.rejection_stage ?? "",
     });
@@ -568,9 +574,9 @@ export default function ApplicationsPage() {
                           {app.salary && <span className="text-amber-400/70">{app.salary.toLocaleString("tr-TR")} ₺/gün</span>}
                           {app.rating && <span className="text-amber-400">{"★".repeat(app.rating)}{"☆".repeat(5 - app.rating)}</span>}
                         </div>
-                        {(app.rating_environment || app.rating_facilities || app.rating_colleagues || app.rating_technical) && (
+                        {(app.rating_environment || app.rating_facilities || app.rating_colleagues || app.rating_work_conditions || app.rating_technical) && (
                           <div className="flex flex-wrap gap-2">
-                            {([["rating_environment","Ortam"],["rating_facilities","İmkanlar"],["rating_colleagues","Ekip"],["rating_technical","Teknik"]] as const).map(([key, label]) => {
+                            {([["rating_environment","Ortam"],["rating_facilities","İmkanlar"],["rating_colleagues","Ekip"],["rating_work_conditions","Koşullar"],["rating_technical","Teknik"]] as const).map(([key, label]) => {
                               const val = app[key];
                               return val ? (
                                 <span key={key} className="text-xs bg-slate-800/60 border border-slate-700/40 rounded-lg px-2 py-1 text-slate-400">

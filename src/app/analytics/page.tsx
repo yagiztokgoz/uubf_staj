@@ -21,6 +21,7 @@ type ApplicationRow = {
   rating_facilities: number | null;
   rating_colleagues: number | null;
   rating_technical: number | null;
+  rating_work_conditions: number | null;
   gpa: number | null;
   interests: string[] | null;
   profile_department: string | null;
@@ -124,7 +125,7 @@ export default function AnalyticsPage() {
         ] = await Promise.all([
           supabase
             .from("analytics_applications_anonymous")
-            .select("company_name, application_department, result, rejection_stage, found_with_referral, salary, rating, rating_environment, rating_facilities, rating_colleagues, rating_technical, gpa, interests, profile_department, class_year, minor_department, gender, period"),
+            .select("company_name, application_department, result, rejection_stage, found_with_referral, salary, rating, rating_environment, rating_facilities, rating_colleagues, rating_work_conditions, rating_technical, gpa, interests, profile_department, class_year, minor_department, gender, period"),
           supabase
             .from("analytics_comments_authenticated")
             .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note, period"),
@@ -242,6 +243,7 @@ export default function AnalyticsPage() {
     { key: "rating_environment" as const, label: "Ortam & Atmosfer" },
     { key: "rating_facilities"  as const, label: "İmkanlar & Yan Haklar" },
     { key: "rating_colleagues"  as const, label: "Çalışma Arkadaşları" },
+    { key: "rating_work_conditions" as const, label: "Çalışma Koşulları" },
     { key: "rating_technical"   as const, label: "Teknik Gelişim" },
   ];
   const categoryAvgs = CATEGORY_KEYS.map(({ key, label }) => {

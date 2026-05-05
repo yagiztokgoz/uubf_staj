@@ -24,12 +24,19 @@ create table if not exists public.applications (
   company_name text not null,
   department text,
   result text check (result in ('beklemede', 'mulakat_bekleniyor', 'olumlu', 'staji_bitirdim', 'ret')) default 'beklemede',
+  rejection_stage text check (rejection_stage in ('Genel Yetenek', 'İK Mülakatı', 'Teknik Mülakat')),
   found_with_referral boolean default false,
   interview_note text,
   experience_note text,
-  applied_at date default current_date,
+  applied_at date,
+  period text,
   salary integer,
   rating integer check (rating between 1 and 5),
+  rating_environment integer check (rating_environment between 1 and 5),
+  rating_facilities integer check (rating_facilities between 1 and 5),
+  rating_colleagues integer check (rating_colleagues between 1 and 5),
+  rating_work_conditions integer check (rating_work_conditions between 1 and 5),
+  rating_technical integer check (rating_technical between 1 and 5),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -67,15 +74,22 @@ select
   a.company_name,
   a.department as application_department,
   a.result,
+  a.rejection_stage,
   a.found_with_referral,
   a.salary,
   a.rating,
+  a.rating_environment,
+  a.rating_facilities,
+  a.rating_colleagues,
+  a.rating_work_conditions,
+  a.rating_technical,
   p.gpa,
   p.interests,
   p.department as profile_department,
   p.class_year,
   p.minor_department,
-  p.gender
+  p.gender,
+  a.period
 from public.applications as a
 join public.profiles as p
   on p.id = a.user_id;

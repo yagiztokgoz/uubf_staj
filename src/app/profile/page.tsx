@@ -304,10 +304,12 @@ export default function ProfilePage() {
 
           {/* Bitirme Tezi */}
           <div className={CARD_CLASS}>
-            <h3 className="text-base font-semibold text-slate-100 mb-4 flex items-center gap-2">
+            <h3 className="text-base font-semibold text-slate-100 mb-1 flex items-center gap-2">
               <span className="w-1 h-4 bg-gradient-to-b from-blue-400 to-cyan-500 rounded-full" />
               Bitirme Tezi
+              <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400">opsiyonel</span>
             </h3>
+            <p className="text-xs text-slate-500 mb-4">Doldurmak zorunda değilsin</p>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -345,8 +347,9 @@ export default function ProfilePage() {
             <h3 className="text-base font-semibold text-slate-100 mb-1 flex items-center gap-2">
               <span className="w-1 h-4 bg-gradient-to-b from-green-400 to-emerald-500 rounded-full" />
               Projeler
+              <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400">opsiyonel</span>
             </h3>
-            <p className="text-xs text-slate-500 mb-4">Yaptığın projelerden kısaca bahset <span className="text-slate-600">(opsiyonel)</span></p>
+            <p className="text-xs text-slate-500 mb-4">Yaptığın projelerden kısaca bahset</p>
             <textarea
               placeholder="Örn: TEKNOFEST yarışmaları (roket, İHA, savaşan İHA...), proje takımları (rocketry, satellite, formula...), kişisel AR-GE projeleri, açık kaynak katkılar..."
               rows={4} value={form.projects}

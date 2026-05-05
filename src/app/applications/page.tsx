@@ -347,7 +347,7 @@ export default function ApplicationsPage() {
             onClick={() => { setForm(EMPTY_FORM); setEditingId(null); setShowForm(true); }}
             className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-lg px-5 py-2.5 text-sm transition-all shadow-lg shadow-cyan-500/20"
           >
-            + Başvuru Ekle
+            + Staj Ekle
           </button>
         </div>
 
@@ -357,12 +357,12 @@ export default function ApplicationsPage() {
               <span className="shrink-0 font-bold">!</span>
               <span>
                 <strong>Birim / departman adını tutarlı yazmaya özen gösterin.</strong>{" "}
-                Büyük harf otomatik uygulanır. Örn: UÇUŞ YAZILIMLARI, AERODİNAMİK, YAZILIM GELİŞTİRME
+                Büyük harf otomatik uygulanır. Örn: UÇUŞ BİLİMLERİ, YAPISAL TEKNOLOJİLER, GÖMÜLÜ YAZILIM
               </span>
             </div>
             <h3 className="text-base font-semibold text-slate-100 mb-5 flex items-center gap-2">
               <span className="w-1 h-4 bg-gradient-to-b from-cyan-400 to-blue-500 rounded-full" />
-              {editingId ? "Başvuruyu Düzenle" : "Yeni Başvuru"}
+              {editingId ? "Stajı Düzenle" : "Yeni Staj"}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -372,7 +372,7 @@ export default function ApplicationsPage() {
                 </div>
                 <div>
                   <label className={LABEL_CLASS}>Birim / Departman</label>
-                  <input placeholder="UÇUŞ YAZILIMLARI, AERODİNAMİK..." value={form.department} onChange={(e) => setForm({ ...form, department: normalizeUppercase(e.target.value) })} className={INPUT_CLASS} />
+                  <input placeholder="UÇUŞ BİLİMLERİ, YAPISAL..." value={form.department} onChange={(e) => setForm({ ...form, department: normalizeUppercase(e.target.value) })} className={INPUT_CLASS} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -395,11 +395,11 @@ export default function ApplicationsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={LABEL_CLASS}>Günlük Ücret <span className="text-slate-500 text-xs">(TL, opsiyonel)</span></label>
+                  <label className={LABEL_CLASS}>Günlük Ücret <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 ml-1">opsiyonel</span></label>
                   <input type="number" min="0" placeholder="600" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} className={INPUT_CLASS} />
                 </div>
                 <div>
-                  <label className={LABEL_CLASS}>Genel Değerlendirme <span className="text-slate-500 text-xs">(opsiyonel)</span></label>
+                  <label className={LABEL_CLASS}>Genel Değerlendirme <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 ml-1">opsiyonel</span></label>
                   <div className="flex gap-2 mt-1">
                     {[1,2,3,4,5].map((n) => (
                       <button key={n} type="button" onClick={() => setForm({ ...form, rating: form.rating === n ? null : n })}
@@ -423,11 +423,11 @@ export default function ApplicationsPage() {
                 Stajı torpille buldum
               </label>
               <div>
-                <label className={LABEL_CLASS}>Mülakat Notu</label>
+                <label className={LABEL_CLASS}>Mülakat Notu <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 ml-1">opsiyonel</span></label>
                 <textarea placeholder="Mülakat süreci, sorulan sorular..." rows={2} value={form.interview_note} onChange={(e) => setForm({ ...form, interview_note: e.target.value })} className={TEXTAREA_CLASS} />
               </div>
               <div>
-                <label className={LABEL_CLASS}>Staj Deneyimi</label>
+                <label className={LABEL_CLASS}>Staj Deneyimi <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 ml-1">opsiyonel</span></label>
                 <textarea placeholder="Staj boyunca neler yaptın, neler öğrendin..." rows={3} value={form.experience_note} onChange={(e) => setForm({ ...form, experience_note: e.target.value })} className={TEXTAREA_CLASS} />
               </div>
               <div className="flex gap-3">

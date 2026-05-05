@@ -158,16 +158,16 @@ export default function LoginPage() {
               <p className="text-sm text-slate-400">
                 <span className="text-cyan-400">{email}</span> adresine giriş linki gönderdik.
               </p>
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-left text-sm text-amber-100 space-y-1">
+                <p className="font-medium text-amber-300">Maili gelen kutusunda göremezsen spam / gereksiz / tanıtımlar klasörünü kontrol et.</p>
+                <p className="text-amber-100/80">Link genelde birkaç dakika içinde gelir. Bazen İTÜ mailinde doğrudan spam klasörüne düşebiliyor.</p>
+              </div>
               {cooldownRemaining > 0 && (
                 <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-left text-sm text-cyan-100 space-y-1">
                   <p className="font-medium text-cyan-300">Aynı adrese yeniden link istemek için {formatCooldown(cooldownRemaining)} beklemelisin.</p>
                   <p className="text-cyan-100/80">Bu sürenin sonunda istersen aynı mail adresine yeni link alabilirsin.</p>
                 </div>
               )}
-              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-left text-sm text-amber-100 space-y-1">
-                <p className="font-medium text-amber-300">Maili gelen kutusunda göremezsen spam / gereksiz / tanıtımlar klasörünü kontrol et.</p>
-                <p className="text-amber-100/80">Link genelde birkaç dakika içinde gelir. Bazen İTÜ mailinde doğrudan spam klasörüne düşebiliyor.</p>
-              </div>
               <button
                 onClick={() => setSent(false)}
                 className="text-sm text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-4 mt-2"

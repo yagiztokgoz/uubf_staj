@@ -554,7 +554,7 @@ export default function AnalyticsPage() {
                         <XAxis dataKey="year" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
                         <YAxis domain={[0, 100]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
                         <Tooltip {...TT} formatter={(v) => [`%${typeof v === "number" ? v : 0}`, "Kabul Oranı"]} />
-                        <Bar dataKey="rate" name="Kabul Oranı" radius={[4,4,0,0]} label={{ position: "top", fill: "#94a3b8", fontSize: 11, formatter: (v: number) => `%${v}` }}>
+                        <Bar dataKey="rate" name="Kabul Oranı" radius={[4,4,0,0]} label={{ position: "top", fill: "#94a3b8", fontSize: 11, formatter: (v: unknown) => `%${v}` }}>
                           {classStats.map((s, i) => <Cell key={i} fill={`hsl(${120 * (s.rate / 100)}, 75%, 55%)`} />)}
                         </Bar>
                       </BarChart>
@@ -823,7 +823,7 @@ export default function AnalyticsPage() {
                           <XAxis dataKey="gender" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 12 }} />
                           <YAxis domain={[0, 100]} stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
                           <Tooltip {...TT} formatter={(v) => [`%${typeof v === "number" ? v : 0}`, "Kabul Oranı"]} />
-                          <Bar dataKey="rate" name="Kabul Oranı" radius={[4,4,0,0]} label={{ position: "top", fill: "#e2e8f0", fontSize: 13, fontWeight: 600, formatter: (v: number) => `%${v}` }}>
+                          <Bar dataKey="rate" name="Kabul Oranı" radius={[4,4,0,0]} label={{ position: "top", fill: "#e2e8f0", fontSize: 13, fontWeight: 600, formatter: (v: unknown) => `%${v}` }}>
                             {genderAccept.map((e) => <Cell key={e.gender} fill={e.gender === "Erkek" ? NEON.erkek : NEON.kadın} />)}
                           </Bar>
                         </BarChart>

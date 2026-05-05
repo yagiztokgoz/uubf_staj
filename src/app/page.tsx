@@ -1,11 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
+const OTP_COOLDOWN_SECONDS = 60;
+const OTP_COOLDOWN_STORAGE_PREFIX = "uubf:otp-cooldown";
+
 function isItuEmail(value: string) {
   return /^[^\s@]+@itu\.edu\.tr$/i.test(value.trim());
+}
+
+function getCooldownStorageKey(email: string) {
+  return `${OTP_COOLDOWN_STORAGE_PREFIX}:${encodeURIComponent(email)}`;
+}
+
+function getCooldownRemainingSeconds(email: string, currentTime = Date.now()) {
+  if (!email || typeof window === "undefined") return 0;
+
+  const raw = window.localStorage.getItem(getCooldownStorageKey(email));
+  const until = raw ? Number(raw) : 0;
+  if (!Number.isFinite(until) || until <= currentTime) {
+    window.localStorage.removeItem(getCooldownStorageKey(email));
+    return 0;
+  }
+
+  return Math.ceil((until - currentTime) / 1000);
+}
+
+function setCooldown(email: string, seconds: number) {
+  if (!email || typeof window === "undefined") return;
+
+  window.localStorage.setItem(
+    getCooldownStorageKey(email),
+    String(Date.now() + seconds * 1000)
+  );
+}
+
+function formatCooldown(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  if (minutes > 0) {
+    return `${minutes} dk ${remainingSeconds.toString().padStart(2, "0")} sn`;
+  }
+
+  return `${remainingSeconds} sn`;
 }
 
 export default function LoginPage() {
@@ -13,14 +53,29 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const normalizedEmail = email.trim().toLowerCase();
+  const cooldownRemaining = getCooldownRemainingSeconds(normalizedEmail, currentTime);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const normalizedEmail = email.trim().toLowerCase();
 
     setError("");
     if (!isItuEmail(normalizedEmail)) {
       setError("Sadece @itu.edu.tr uzantılı e-posta adresleriyle giriş yapabilirsin.");
+      return;
+    }
+
+    const remaining = getCooldownRemainingSeconds(normalizedEmail);
+    if (remaining > 0) {
+      setError(`Bu adrese tekrar giriş linki istemek için ${formatCooldown(remaining)} beklemelisin.`);
       return;
     }
 
@@ -34,12 +89,18 @@ export default function LoginPage() {
     if (error) {
       const msg = error.message?.toLowerCase() ?? "";
       if (msg.includes("rate limit") || msg.includes("too many") || msg.includes("exceeded") || error.status === 429) {
-        setError("Günlük mail limiti doldu. Lütfen birkaç saat sonra tekrar dene veya daha önce aldığın linki kullan.");
+        setCooldown(normalizedEmail, OTP_COOLDOWN_SECONDS);
+        setCurrentTime((time) => time + 1);
+        setError(`Bu adrese kısa süre önce link gönderildi. ${formatCooldown(OTP_COOLDOWN_SECONDS)} sonra tekrar deneyebilir veya önceki maildeki linki kullanabilirsin.`);
       } else {
         setError(error.message);
       }
     }
-    else setSent(true);
+    else {
+      setCooldown(normalizedEmail, OTP_COOLDOWN_SECONDS);
+      setCurrentTime((time) => time + 1);
+      setSent(true);
+    }
     setLoading(false);
   }
 
@@ -101,6 +162,12 @@ export default function LoginPage() {
               <p className="text-sm text-slate-400">
                 <span className="text-cyan-400">{email}</span> adresine giriş linki gönderdik.
               </p>
+              {cooldownRemaining > 0 && (
+                <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-left text-sm text-cyan-100 space-y-1">
+                  <p className="font-medium text-cyan-300">Aynı adrese yeniden link istemek için {formatCooldown(cooldownRemaining)} beklemelisin.</p>
+                  <p className="text-cyan-100/80">Bu sürenin sonunda istersen aynı mail adresine yeni link alabilirsin.</p>
+                </div>
+              )}
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-left text-sm text-amber-100 space-y-1">
                 <p className="font-medium text-amber-300">Maili gelen kutusunda göremezsen spam / gereksiz / tanıtımlar klasörünü kontrol et.</p>
                 <p className="text-amber-100/80">Link genelde birkaç dakika içinde gelir. Bazen İTÜ mailinde doğrudan spam klasörüne düşebiliyor.</p>
@@ -123,7 +190,10 @@ export default function LoginPage() {
                   type="email"
                   placeholder="cemilhoca@itu.edu.tr"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError("");
+                  }}
                   pattern=".+@itu\.edu\.tr"
                   title="Lütfen @itu.edu.tr uzantılı bir e-posta adresi gir."
                   autoCapitalize="none"
@@ -133,15 +203,24 @@ export default function LoginPage() {
                   className="w-full bg-slate-800/50 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-all"
                 />
               </div>
+              {cooldownRemaining > 0 && isItuEmail(normalizedEmail) && (
+                <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                  Bu adrese yeni link almak için {formatCooldown(cooldownRemaining)} beklemelisin.
+                </p>
+              )}
               {error && (
                 <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
               )}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (cooldownRemaining > 0 && isItuEmail(normalizedEmail))}
                 className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg px-4 py-2.5 text-sm transition-all shadow-lg shadow-cyan-500/20"
               >
-                {loading ? "Gönderiliyor..." : "Giriş Linki Gönder"}
+                {loading
+                  ? "Gönderiliyor..."
+                  : cooldownRemaining > 0 && isItuEmail(normalizedEmail)
+                    ? `${formatCooldown(cooldownRemaining)} sonra tekrar dene`
+                    : "Giriş Linki Gönder"}
               </button>
             </form>
           )}

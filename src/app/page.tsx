@@ -70,6 +70,10 @@ export default function LoginPage() {
             <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
             <span>Sistemde yalnızca girdiğiniz İTÜ mail adresi tutulmaktadır. Tüm staj verileri anonimleştirilmiş olarak saklanır.</span>
           </div>
+          <div className="flex items-start gap-2.5">
+            <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
+            <span>Hiçbir kullanıcı hangi değerlendirmeyi kimin yaptığını <span className="text-slate-300 font-medium">kesinlikle göremez</span>. Tüm bilgiler anonim olarak sergilenir.</span>
+          </div>
         </div>
 
         {/* Card */}
@@ -131,7 +135,7 @@ export default function LoginPage() {
         <div className="text-center">
           <Link
             href="/analytics"
-            className="text-sm text-slate-500 hover:text-cyan-400 transition-colors"
+            className="inline-block text-xs font-medium px-4 py-2 rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.2)] hover:bg-red-500/20 hover:shadow-[0_0_16px_rgba(239,68,68,0.35)] transition-all"
           >
             Giriş yapmadan analitikleri görüntüle →
           </Link>

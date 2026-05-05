@@ -18,6 +18,10 @@ type Application = {
   period: string | null;
   salary: number | null;
   rating: number | null;
+  rating_environment: number | null;
+  rating_facilities: number | null;
+  rating_colleagues: number | null;
+  rating_technical: number | null;
 };
 
 type FormState = {
@@ -30,8 +34,19 @@ type FormState = {
   period: string;
   salary: string;
   rating: number | null;
+  rating_environment: number | null;
+  rating_facilities: number | null;
+  rating_colleagues: number | null;
+  rating_technical: number | null;
   found_with_referral: boolean;
 };
+
+const CATEGORY_RATINGS: { key: keyof FormState; label: string }[] = [
+  { key: "rating_environment", label: "Ortam & Atmosfer" },
+  { key: "rating_facilities",  label: "İmkanlar & Yan Haklar" },
+  { key: "rating_colleagues",  label: "Çalışma Arkadaşları" },
+  { key: "rating_technical",   label: "Teknik Gelişim" },
+];
 
 type AuthIdentity = {
   id: string;
@@ -99,7 +114,10 @@ const EMPTY_FORM: FormState = {
   rejection_stage: "",
   interview_note: "", experience_note: "",
   period: currentPeriod(),
-  salary: "", rating: null, found_with_referral: false,
+  salary: "", rating: null,
+  rating_environment: null, rating_facilities: null,
+  rating_colleagues: null, rating_technical: null,
+  found_with_referral: false,
 };
 
 const INPUT_CLASS = "w-full bg-slate-800/50 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-all";
@@ -262,6 +280,10 @@ export default function ApplicationsPage() {
       period: form.period,
       ...(form.salary.trim() ? { salary: parseInt(form.salary, 10) } : {}),
       ...(form.rating !== null ? { rating: form.rating } : {}),
+      rating_environment: form.rating_environment,
+      rating_facilities: form.rating_facilities,
+      rating_colleagues: form.rating_colleagues,
+      rating_technical: form.rating_technical,
     };
 
     if (editingId) {
@@ -316,6 +338,10 @@ export default function ApplicationsPage() {
       period: app.period ?? currentPeriod(),
       salary: app.salary?.toString() ?? "",
       rating: app.rating,
+      rating_environment: app.rating_environment,
+      rating_facilities: app.rating_facilities,
+      rating_colleagues: app.rating_colleagues,
+      rating_technical: app.rating_technical,
       rejection_stage: app.rejection_stage ?? "",
     });
     setEditingId(app.id); setShowForm(true);
@@ -457,6 +483,30 @@ export default function ApplicationsPage() {
                   </div>
                 </div>
               </div>
+              <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-4 space-y-3">
+                <p className="text-xs text-slate-400 font-medium">Kategori Puanları <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 ml-1">opsiyonel</span></p>
+                {CATEGORY_RATINGS.map(({ key, label }) => (
+                  <div key={key} className="flex items-center justify-between gap-4">
+                    <span className="text-sm text-slate-300 w-44 shrink-0">{label}</span>
+                    <div className="flex gap-2">
+                      {[1,2,3,4,5].map((n) => {
+                        const val = form[key] as number | null;
+                        return (
+                          <button key={n} type="button"
+                            onClick={() => setForm({ ...form, [key]: val === n ? null : n })}
+                            className={`w-8 h-8 rounded-lg text-xs font-bold border transition-all ${
+                              val !== null && n <= val
+                                ? "bg-cyan-500/25 text-cyan-300 border-cyan-500/50"
+                                : "bg-slate-800/50 text-slate-500 border-slate-700/50 hover:border-slate-500/50"
+                            }`}
+                          >{n}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               <label className="flex items-center gap-3 rounded-xl border border-slate-700/50 bg-slate-800/30 px-4 py-3 text-sm text-slate-300">
                 <input
                   type="checkbox"
@@ -518,6 +568,18 @@ export default function ApplicationsPage() {
                           {app.salary && <span className="text-amber-400/70">{app.salary.toLocaleString("tr-TR")} ₺/gün</span>}
                           {app.rating && <span className="text-amber-400">{"★".repeat(app.rating)}{"☆".repeat(5 - app.rating)}</span>}
                         </div>
+                        {(app.rating_environment || app.rating_facilities || app.rating_colleagues || app.rating_technical) && (
+                          <div className="flex flex-wrap gap-2">
+                            {([["rating_environment","Ortam"],["rating_facilities","İmkanlar"],["rating_colleagues","Ekip"],["rating_technical","Teknik"]] as const).map(([key, label]) => {
+                              const val = app[key];
+                              return val ? (
+                                <span key={key} className="text-xs bg-slate-800/60 border border-slate-700/40 rounded-lg px-2 py-1 text-slate-400">
+                                  {label} <span className="text-cyan-400 font-medium">{val}/5</span>
+                                </span>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
                       {app.interview_note && (
                         <p className="text-sm text-slate-400"><span className="text-slate-300 font-medium">Mülakat:</span> {app.interview_note}</p>
                       )}

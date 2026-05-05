@@ -17,6 +17,10 @@ type ApplicationRow = {
   found_with_referral: boolean | null;
   salary: number | null;
   rating: number | null;
+  rating_environment: number | null;
+  rating_facilities: number | null;
+  rating_colleagues: number | null;
+  rating_technical: number | null;
   gpa: number | null;
   interests: string[] | null;
   profile_department: string | null;
@@ -118,7 +122,7 @@ export default function AnalyticsPage() {
         ] = await Promise.all([
           supabase
             .from("analytics_applications_anonymous")
-            .select("company_name, application_department, result, rejection_stage, found_with_referral, salary, rating, gpa, interests, profile_department, class_year, minor_department, gender, period"),
+            .select("company_name, application_department, result, rejection_stage, found_with_referral, salary, rating, rating_environment, rating_facilities, rating_colleagues, rating_technical, gpa, interests, profile_department, class_year, minor_department, gender, period"),
           supabase
             .from("analytics_comments_authenticated")
             .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note"),
@@ -231,6 +235,18 @@ export default function AnalyticsPage() {
 
   // — Puan dağılımı —
   const ratingDist = [1, 2, 3, 4, 5].map((r) => ({ puan: `${r} ★`, count: filtered.filter((a) => a.rating === r).length }));
+
+  // — Kategori puanları —
+  const CATEGORY_KEYS = [
+    { key: "rating_environment" as const, label: "Ortam & Atmosfer" },
+    { key: "rating_facilities"  as const, label: "İmkanlar & Yan Haklar" },
+    { key: "rating_colleagues"  as const, label: "Çalışma Arkadaşları" },
+    { key: "rating_technical"   as const, label: "Teknik Gelişim" },
+  ];
+  const categoryAvgs = CATEGORY_KEYS.map(({ key, label }) => {
+    const vals = filtered.map((a) => a[key]).filter((v): v is number => v != null);
+    return { label, avg: vals.length > 0 ? parseFloat((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1)) : 0, count: vals.length };
+  });
 
   // — Maaşlı/maaşsız —
   const paidCount = filtered.filter((a) => a.salary != null && a.salary > 0).length;
@@ -610,6 +626,25 @@ export default function AnalyticsPage() {
                     )}
                   </div>
                 </div>
+
+                {categoryAvgs.some((c) => c.count > 0) && (
+                  <div className={CARD}>
+                    <h3 className="text-base font-semibold text-slate-100 mb-5">Kategori Bazında Ortalama Puanlar</h3>
+                    <div className="space-y-3">
+                      {categoryAvgs.map(({ label, avg, count }) => (
+                        <div key={label} className="flex items-center gap-3">
+                          <span className="text-sm text-slate-300 w-48 shrink-0">{label}</span>
+                          <div className="flex-1 bg-slate-800/50 rounded-full h-2">
+                            <div className="h-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all"
+                              style={{ width: avg > 0 ? `${(avg / 5) * 100}%` : "0%" }} />
+                          </div>
+                          <span className="text-sm font-semibold text-cyan-400 w-12 text-right">{avg > 0 ? `${avg}/5` : "—"}</span>
+                          <span className="text-xs text-slate-600 w-16 text-right">{count} veri</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               {/* ── Dönem Trendi ── */}

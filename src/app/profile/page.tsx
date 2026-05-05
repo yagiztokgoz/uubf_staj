@@ -177,7 +177,7 @@ export default function ProfilePage() {
           </span>
           <nav className="flex items-center gap-5">
             <Link href="/profile" className={NAV_ACTIVE}>Profilim</Link>
-            <Link href="/applications" className={NAV_LINK}>Başvurularım</Link>
+            <Link href="/applications" className={NAV_LINK}>Stajlarım</Link>
             <Link href="/analytics" className={NAV_LINK}>Analitik</Link>
             <button onClick={handleSignOut} className="text-sm text-slate-500 hover:text-red-400 transition-colors">Çıkış</button>
           </nav>
@@ -362,7 +362,7 @@ export default function ProfilePage() {
             </button>
             <Link href="/applications">
               <button type="button" className="text-sm text-slate-400 hover:text-cyan-400 transition-colors">
-                Başvurularıma Git →
+                Stajlarıma Git →
               </button>
             </Link>
           </div>

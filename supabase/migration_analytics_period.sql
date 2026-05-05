@@ -1,4 +1,5 @@
 -- analytics_applications_anonymous view'ına period kolonu ekle
+-- Not: CREATE OR REPLACE VIEW yeni kolonu sona eklemek zorunda
 create or replace view public.analytics_applications_anonymous as
 select
   a.company_name,
@@ -7,13 +8,13 @@ select
   a.found_with_referral,
   a.salary,
   a.rating,
-  a.period,
   p.gpa,
   p.interests,
   p.department as profile_department,
   p.class_year,
   p.minor_department,
-  p.gender
+  p.gender,
+  a.period
 from public.applications as a
 join public.profiles as p
   on p.id = a.user_id;

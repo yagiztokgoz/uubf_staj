@@ -312,7 +312,7 @@ export default function AnalyticsPage() {
             <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">UUBF</span>{" "}Staj Takip
           </span>
           <nav className="flex items-center gap-5">
-            {loggedIn ? (<><Link href="/profile" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Profilim</Link><Link href="/applications" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Başvurularım</Link></>) : (<Link href="/" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Giriş Yap</Link>)}
+            {loggedIn ? (<><Link href="/profile" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Profilim</Link><Link href="/applications" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Stajlarım</Link></>) : (<Link href="/" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Giriş Yap</Link>)}
             <Link href="/analytics" className="text-cyan-400 text-sm font-medium">Analitik</Link>
           </nav>
         </div>

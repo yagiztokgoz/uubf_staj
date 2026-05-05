@@ -330,7 +330,7 @@ export default function ApplicationsPage() {
           </span>
           <nav className="flex items-center gap-5">
             <Link href="/profile" className={NAV_LINK}>Profilim</Link>
-            <Link href="/applications" className={NAV_ACTIVE}>Başvurularım</Link>
+            <Link href="/applications" className={NAV_ACTIVE}>Stajlarım</Link>
             <Link href="/analytics" className={NAV_LINK}>Analitik</Link>
             <button onClick={handleSignOut} className="text-sm text-slate-500 hover:text-red-400 transition-colors">Çıkış</button>
           </nav>
@@ -340,7 +340,7 @@ export default function ApplicationsPage() {
       <main className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-slate-100">Başvurularım</h2>
+            <h2 className="text-2xl font-bold text-slate-100">Stajlarım</h2>
             <p className="text-slate-500 mt-0.5 text-sm">{applications.length} başvuru</p>
           </div>
           <button

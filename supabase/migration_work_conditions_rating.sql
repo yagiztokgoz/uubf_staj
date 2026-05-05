@@ -14,7 +14,6 @@ select
   a.rating_environment,
   a.rating_facilities,
   a.rating_colleagues,
-  a.rating_work_conditions,
   a.rating_technical,
   p.gpa,
   p.interests,
@@ -22,7 +21,8 @@ select
   p.class_year,
   p.minor_department,
   p.gender,
-  a.period
+  a.period,
+  a.rating_work_conditions
 from public.applications as a
 join public.profiles as p
   on p.id = a.user_id;

@@ -11,6 +11,7 @@ type Application = {
   company_name: string;
   department: string | null;
   result: string;
+  rejection_stage: string | null;
   found_with_referral: boolean | null;
   interview_note: string | null;
   experience_note: string | null;
@@ -23,6 +24,7 @@ type FormState = {
   company_name: string;
   department: string;
   result: string;
+  rejection_stage: string;
   interview_note: string;
   experience_note: string;
   period: string;
@@ -94,6 +96,7 @@ function sortByPeriod(a: Application, b: Application): number {
 
 const EMPTY_FORM: FormState = {
   company_name: "", department: "", result: "beklemede",
+  rejection_stage: "",
   interview_note: "", experience_note: "",
   period: currentPeriod(),
   salary: "", rating: null, found_with_referral: false,
@@ -236,6 +239,7 @@ export default function ApplicationsPage() {
       company_name: normalizeUppercase(form.company_name.trim()),
       department: form.department.trim() ? normalizeUppercase(form.department.trim()) : null,
       result: form.result,
+      rejection_stage: form.result === "ret" && form.rejection_stage ? form.rejection_stage : null,
       found_with_referral: form.found_with_referral,
       interview_note: form.interview_note.trim() || null,
       experience_note: form.experience_note.trim() || null,
@@ -296,6 +300,7 @@ export default function ApplicationsPage() {
       period: app.period ?? currentPeriod(),
       salary: app.salary?.toString() ?? "",
       rating: app.rating,
+      rejection_stage: app.rejection_stage ?? "",
     });
     setEditingId(app.id); setShowForm(true);
   }
@@ -378,7 +383,7 @@ export default function ApplicationsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={LABEL_CLASS}>Sonuç</label>
-                  <select value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value })} className={SELECT_CLASS}>
+                  <select value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value, rejection_stage: "" })} className={SELECT_CLASS}>
                     {RESULT_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
@@ -393,6 +398,23 @@ export default function ApplicationsPage() {
                   </select>
                 </div>
               </div>
+              {form.result === "ret" && (
+                <div>
+                  <label className={LABEL_CLASS}>Ret Aşaması <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 ml-1">opsiyonel</span></label>
+                  <div className="flex gap-2 flex-wrap">
+                    {["Genel Yetenek", "İK Mülakatı", "Teknik Mülakat"].map((stage) => (
+                      <button key={stage} type="button"
+                        onClick={() => setForm({ ...form, rejection_stage: form.rejection_stage === stage ? "" : stage })}
+                        className={`px-3 py-2 rounded-lg text-xs border transition-all ${
+                          form.rejection_stage === stage
+                            ? "bg-red-500/20 text-red-300 border-red-500/40"
+                            : "bg-slate-800/50 text-slate-400 border-slate-700/50 hover:border-slate-600/50"
+                        }`}
+                      >{stage}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={LABEL_CLASS}>Günlük Ücret <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 ml-1">opsiyonel</span></label>
@@ -458,6 +480,11 @@ export default function ApplicationsPage() {
                         <span className="font-semibold text-slate-100">{app.company_name}</span>
                         {app.department && <span className="text-slate-500 text-sm">— {app.department}</span>}
                         <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium border ${r.cls}`}>{r.label}</span>
+                        {app.result === "ret" && app.rejection_stage && (
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-medium border border-red-500/20 bg-red-500/10 text-red-400">
+                            {app.rejection_stage}
+                          </span>
+                        )}
                         {app.found_with_referral ? (
                           <span className="text-xs px-2.5 py-0.5 rounded-full font-medium border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-300">
                             Torpille Bulundu

@@ -54,6 +54,9 @@ export default function LoginPage() {
           <p className="text-slate-400 text-base">
             Staj deneyimlerini paylaş, veriden ilham al
           </p>
+          <p className="text-sm text-amber-400/90 bg-amber-500/10 border border-amber-500/25 rounded-lg px-4 py-2 mt-1">
+            Yalnızca <span className="font-semibold">İTÜ öğrencilerine</span> açıktır — <span className="font-mono">@itu.edu.tr</span> mail adresi gereklidir
+          </p>
         </div>
 
         {/* Bilgilendirme */}
@@ -72,7 +75,7 @@ export default function LoginPage() {
           </div>
           <div className="flex items-start gap-2.5">
             <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
-            <span>Hiçbir kullanıcı hangi değerlendirmeyi kimin yaptığını ve kişisel bilgilerini (GPA vb.) <span className="text-slate-300 font-medium">kesinlikle göremez</span>. Tüm bilgiler anonim olarak sergilenir.</span>
+            <span>Hiçbir kullanıcı hangi değerlendirmeyi kimin yaptığını ve diğer profillerin kişisel bilgilerini (GPA, bölüm vb.) <span className="text-slate-300 font-medium">kesinlikle göremez</span>. Tüm bilgiler anonim olarak sergilenir.</span>
           </div>
         </div>
 

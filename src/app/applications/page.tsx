@@ -131,8 +131,15 @@ const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-1.5";
 const NAV_LINK = "text-slate-400 hover:text-cyan-400 transition-colors text-sm";
 const NAV_ACTIVE = "text-cyan-400 text-sm font-medium";
 
+const COMPANY_ALIASES: Record<string, string> = {
+  "TAI": "TUSAŞ",
+  "TAI TUSAŞ": "TUSAŞ",
+  "T.A.İ.": "TUSAŞ",
+};
+
 function normalizeUppercase(value: string) {
-  return value.toLocaleUpperCase("tr-TR");
+  const upper = value.toLocaleUpperCase("tr-TR");
+  return COMPANY_ALIASES[upper] ?? upper;
 }
 
 async function ensureProfileExists(

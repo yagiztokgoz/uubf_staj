@@ -138,10 +138,6 @@ export default function LoginPage() {
             <span>Yalnızca <span className="text-slate-300 font-medium">@itu.edu.tr</span> uzantılı adreslerle giriş yapılabilir.</span>
           </div>
           <div className="flex items-start gap-2.5">
-            <span className="text-amber-400 shrink-0 mt-0.5">!</span>
-            <span><span className="text-amber-300 font-medium">Giriş maili bazen spam / gereksiz / tanıtımlar klasörüne düşebilir.</span> Mail gelmediyse önce bu klasörleri kontrol et.</span>
-          </div>
-          <div className="flex items-start gap-2.5">
             <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
             <span>Sistemde yalnızca girdiğiniz İTÜ mail adresi tutulmaktadır. Tüm staj verileri anonimleştirilmiş olarak saklanır ve gösterilir.</span>
           </div>
@@ -203,11 +199,6 @@ export default function LoginPage() {
                   className="w-full bg-slate-800/50 border border-slate-700/50 text-slate-100 placeholder:text-slate-500 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/50 transition-all"
                 />
               </div>
-              {cooldownRemaining > 0 && isItuEmail(normalizedEmail) && (
-                <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-                  Bu adrese yeni link almak için {formatCooldown(cooldownRemaining)} beklemelisin.
-                </p>
-              )}
               {error && (
                 <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
               )}

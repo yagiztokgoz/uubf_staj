@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -181,6 +181,18 @@ export default function ApplicationsPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [allPairs, setAllPairs] = useState<{ company: string; dept: string | null }[]>([]);
+
+  const companySuggestions = useMemo(
+    () => [...new Set(allPairs.map((p) => p.company))].sort(),
+    [allPairs]
+  );
+  const deptSuggestions = useMemo(() => {
+    const base = form.company_name.trim()
+      ? allPairs.filter((p) => p.company === form.company_name.trim()).map((p) => p.dept)
+      : allPairs.map((p) => p.dept);
+    return [...new Set(base.filter((d): d is string => !!d))].sort();
+  }, [allPairs, form.company_name]);
 
   useEffect(() => {
     async function loadData() {
@@ -203,8 +215,12 @@ export default function ApplicationsPage() {
 
       setUserId(user.id);
       setUserEmail(user.email ?? null);
-      const { data } = await supabase.from("applications").select("*").eq("user_id", user.id);
-      setApplications((data ?? []).sort(sortByPeriod));
+      const [{ data: appsData }, { data: analyticsData }] = await Promise.all([
+        supabase.from("applications").select("*").eq("user_id", user.id),
+        supabase.from("analytics_applications_anonymous").select("company_name, application_department"),
+      ]);
+      setApplications((appsData ?? []).sort(sortByPeriod));
+      setAllPairs((analyticsData ?? []).map((r) => ({ company: r.company_name, dept: r.application_department })));
       setLoading(false);
     }
     loadData();
@@ -373,11 +389,17 @@ export default function ApplicationsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={LABEL_CLASS}>Şirket Adı *</label>
-                  <input placeholder="BAYKAR, TAI, TUSAŞ..." value={form.company_name} onChange={(e) => setForm({ ...form, company_name: normalizeUppercase(e.target.value) })} required className={INPUT_CLASS} />
+                  <input list="company-list" placeholder="BAYKAR, TAI, TUSAŞ..." value={form.company_name} onChange={(e) => setForm({ ...form, company_name: normalizeUppercase(e.target.value) })} required className={INPUT_CLASS} />
+                  <datalist id="company-list">
+                    {companySuggestions.map((c) => <option key={c} value={c} />)}
+                  </datalist>
                 </div>
                 <div>
                   <label className={LABEL_CLASS}>Birim / Departman</label>
-                  <input placeholder="UÇUŞ BİLİMLERİ, YAPISAL..." value={form.department} onChange={(e) => setForm({ ...form, department: normalizeUppercase(e.target.value) })} className={INPUT_CLASS} />
+                  <input list="dept-list" placeholder="UÇUŞ BİLİMLERİ, YAPISAL..." value={form.department} onChange={(e) => setForm({ ...form, department: normalizeUppercase(e.target.value) })} className={INPUT_CLASS} />
+                  <datalist id="dept-list">
+                    {deptSuggestions.map((d) => <option key={d} value={d} />)}
+                  </datalist>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

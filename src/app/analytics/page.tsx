@@ -13,6 +13,7 @@ type ApplicationRow = {
   company_name: string;
   application_department: string | null;
   result: string;
+  rejection_stage: string | null;
   found_with_referral: boolean | null;
   salary: number | null;
   rating: number | null;
@@ -117,7 +118,7 @@ export default function AnalyticsPage() {
         ] = await Promise.all([
           supabase
             .from("analytics_applications_anonymous")
-            .select("company_name, application_department, result, found_with_referral, salary, rating, gpa, interests, profile_department, class_year, minor_department, gender, period"),
+            .select("company_name, application_department, result, rejection_stage, found_with_referral, salary, rating, gpa, interests, profile_department, class_year, minor_department, gender, period"),
           supabase
             .from("analytics_comments_authenticated")
             .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note"),
@@ -297,6 +298,15 @@ export default function AnalyticsPage() {
   const acceptedInterestCounts: Record<string, number> = {};
   filtered.filter((a) => ACCEPTED_RESULTS.has(a.result)).forEach((a) => a.interests?.forEach((i) => { acceptedInterestCounts[i] = (acceptedInterestCounts[i] ?? 0) + 1; }));
   const acceptedInterestData = Object.entries(acceptedInterestCounts).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([interest, count]) => ({ interest, count }));
+
+  // — Ret aşaması —
+  const REJECTION_STAGES = ["Genel Yetenek", "İK Mülakatı", "Teknik Mülakat"];
+  const rejectionStageDist = REJECTION_STAGES.map((stage) => ({
+    stage,
+    count: filtered.filter((a) => a.result === "ret" && a.rejection_stage === stage).length,
+  })).filter((d) => d.count > 0);
+  const totalRet = filtered.filter((a) => a.result === "ret").length;
+  const retWithStage = filtered.filter((a) => a.result === "ret" && a.rejection_stage).length;
 
   // Çap / Yandal
   const minorCounts: Record<string, number> = {};
@@ -822,7 +832,7 @@ export default function AnalyticsPage() {
               </TabsContent>
 
               {/* ── Sonuç Dağılımı ── */}
-              <TabsContent value="results" className="mt-4">
+              <TabsContent value="results" className="mt-4 space-y-4">
                 <div className={CARD}>
                   <h3 className="text-base font-semibold text-slate-100 mb-5">Sonuç Dağılımı</h3>
                   {resultDist.length === 0 ? <p className="text-slate-500 text-center py-12">Veri yok</p> : (
@@ -839,6 +849,46 @@ export default function AnalyticsPage() {
                     </ResponsiveContainer>
                   )}
                 </div>
+
+                {totalRet > 0 && (
+                  <div className={CARD}>
+                    <div className="flex items-center gap-3 mb-5">
+                      <h3 className="text-base font-semibold text-slate-100">Ret Aşaması Dağılımı</h3>
+                      <span className="text-xs text-slate-500 bg-slate-800/50 border border-slate-700/50 rounded-full px-3 py-1">
+                        {retWithStage} / {totalRet} ret kaydında aşama belirtilmiş
+                      </span>
+                    </div>
+                    {rejectionStageDist.length === 0 ? (
+                      <p className="text-slate-500 text-center py-8 text-sm">Henüz ret aşaması girilmemiş</p>
+                    ) : (
+                      <>
+                        <ResponsiveContainer width="100%" height={200}>
+                          <BarChart data={rejectionStageDist} margin={{ left: 0, right: 20 }}>
+                            <XAxis dataKey="stage" stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 12 }} />
+                            <YAxis stroke="#475569" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                            <Tooltip {...TT} />
+                            <Bar dataKey="count" name="Ret Sayısı" radius={[6,6,0,0]}>
+                              {rejectionStageDist.map((_, i) => (
+                                <Cell key={i} fill={`hsl(${0 + i * 15}, 75%, 60%)`} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                        <div className="mt-4 space-y-2">
+                          {rejectionStageDist.map((d) => (
+                            <div key={d.stage} className="flex items-center gap-3">
+                              <span className="text-sm text-slate-300 w-36 shrink-0">{d.stage}</span>
+                              <div className="flex-1 bg-slate-800/50 rounded-full h-1.5">
+                                <div className="h-1.5 rounded-full bg-red-500/70" style={{ width: `${(d.count / retWithStage) * 100}%` }} />
+                              </div>
+                              <span className="text-sm text-slate-400 w-16 text-right">{d.count} ret · %{((d.count / retWithStage) * 100).toFixed(0)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </TabsContent>
 
               {/* ── Veritabanı ── */}

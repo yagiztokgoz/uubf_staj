@@ -68,11 +68,11 @@ export default function LoginPage() {
           </div>
           <div className="flex items-start gap-2.5">
             <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
-            <span>Sistemde yalnızca girdiğiniz İTÜ mail adresi tutulmaktadır. Tüm staj verileri anonimleştirilmiş olarak saklanır.</span>
+            <span>Sistemde yalnızca girdiğiniz İTÜ mail adresi tutulmaktadır. Tüm staj verileri anonimleştirilmiş olarak saklanır ve gösterilir.</span>
           </div>
           <div className="flex items-start gap-2.5">
             <span className="text-cyan-400 shrink-0 mt-0.5">→</span>
-            <span>Hiçbir kullanıcı hangi değerlendirmeyi kimin yaptığını <span className="text-slate-300 font-medium">kesinlikle göremez</span>. Tüm bilgiler anonim olarak sergilenir.</span>
+            <span>Hiçbir kullanıcı hangi değerlendirmeyi kimin yaptığını ve kişisel bilgilerini (GPA vb.) <span className="text-slate-300 font-medium">kesinlikle göremez</span>. Tüm bilgiler anonim olarak sergilenir.</span>
           </div>
         </div>
 

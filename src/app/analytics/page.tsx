@@ -22,6 +22,7 @@ type ApplicationRow = {
   class_year: string | null;
   minor_department: string | null;
   gender: string | null;
+  period: string | null;
 };
 
 type CommentRow = {
@@ -90,6 +91,7 @@ export default function AnalyticsPage() {
   const [companyFilter, setCompanyFilter] = useState("tümü");
   const [departmentFilter, setDepartmentFilter] = useState("tümü");
   const [resultFilter, setResultFilter] = useState("tümü");
+  const [periodFilter, setPeriodFilter] = useState("tümü");
 
   useEffect(() => {
     async function loadData() {
@@ -115,7 +117,7 @@ export default function AnalyticsPage() {
         ] = await Promise.all([
           supabase
             .from("analytics_applications_anonymous")
-            .select("company_name, application_department, result, found_with_referral, salary, rating, gpa, interests, profile_department, class_year, minor_department, gender"),
+            .select("company_name, application_department, result, found_with_referral, salary, rating, gpa, interests, profile_department, class_year, minor_department, gender, period"),
           supabase
             .from("analytics_comments_authenticated")
             .select("id, company_name, application_department, result, salary, rating, interview_note, experience_note"),
@@ -132,10 +134,21 @@ export default function AnalyticsPage() {
     loadData();
   }, []);
 
+  const SEASON_ORDER: Record<string, number> = { Bahar: 0, Yaz: 1, Güz: 2 };
+
   const uniqueCompanies = useMemo(() => [...new Set(applications.map((a) => a.company_name))].sort(), [applications]);
   const uniqueDepts = useMemo(() =>
     [...new Set(applications.filter((a) => companyFilter === "tümü" || a.company_name === companyFilter).map((a) => a.application_department).filter((d): d is string => !!d))].sort(),
     [applications, companyFilter]);
+  const uniquePeriods = useMemo(() => {
+    const periods = [...new Set(applications.map((a) => a.period).filter((p): p is string => !!p))];
+    return periods.sort((a, b) => {
+      const [ya, sa] = a.split(" ");
+      const [yb, sb] = b.split(" ");
+      const yearDiff = parseInt(yb) - parseInt(ya);
+      return yearDiff !== 0 ? yearDiff : (SEASON_ORDER[sb] ?? 0) - (SEASON_ORDER[sa] ?? 0);
+    });
+  }, [applications]);
 
   const filtered = useMemo(() => applications.filter((a) => {
     const mc = companyFilter === "tümü" || a.company_name === companyFilter;
@@ -145,8 +158,9 @@ export default function AnalyticsPage() {
       (resultFilter === "olumlu"
         ? ACCEPTED_RESULTS.has(a.result)
         : a.result === resultFilter);
-    return mc && md && mr;
-  }), [applications, companyFilter, departmentFilter, resultFilter]);
+    const mp = periodFilter === "tümü" || a.period === periodFilter;
+    return mc && md && mr && mp;
+  }), [applications, companyFilter, departmentFilter, resultFilter, periodFilter]);
 
   const filteredComments = useMemo(() => comments.filter((comment) => {
     const mc = companyFilter === "tümü" || comment.company_name === companyFilter;
@@ -363,6 +377,15 @@ export default function AnalyticsPage() {
                     <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className={`${SC} min-w-[160px]`}>
                       <option value="tümü">Tüm Birimler</option>
                       {uniqueDepts.map((d) => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+                )}
+                {uniquePeriods.length > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1.5 font-medium">Dönem</p>
+                    <select value={periodFilter} onChange={(e) => setPeriodFilter(e.target.value)} className={`${SC} min-w-[150px]`}>
+                      <option value="tümü">Tüm Dönemler</option>
+                      {uniquePeriods.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
                 )}
